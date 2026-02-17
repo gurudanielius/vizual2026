@@ -11,9 +11,10 @@ data[90:110:4]["month_day"] #paimsim dienas ir sugrupuosim ir sudesim i viena di
 data.groupby(data["month_day"]).sum(numeric_only=True)#%% 
 data.columns = ['Timestamp'] + [f'string_{i}' for i in range(1, 11)] + ['month_day']
 
+
+
+### NaN reikšmių užpildymas naudojant slenkamąjį vidurkį
 data_ma=data.copy()
-
-
 data_ma['moving_avg_string_1'] = data_ma['string_1'].rolling(window=5).mean()
 data_ma['moving_avg_string_2'] = data_ma['string_2'].rolling(window=5).mean()
 data_ma['moving_avg_string_3'] = data_ma['string_3'].rolling(window=5).mean()
@@ -25,7 +26,6 @@ data_ma['moving_avg_string_8'] = data_ma['string_8'].rolling(window=5).mean()
 data_ma['moving_avg_string_9'] = data_ma['string_9'].rolling(window=5).mean()
 data_ma['moving_avg_string_10'] = data_ma['string_10'].rolling(window=5).mean()
 
-# When string_1 is NaN, fill with moving_avg_5 (propagates through consecutive NaNs)
 data_ma['string_1']= data_ma['string_1'].fillna(data_ma['moving_avg_string_1'].ffill())
 data_ma['string_2']= data_ma['string_2'].fillna(data_ma['moving_avg_string_2'].ffill())
 data_ma['string_3']= data_ma['string_3'].fillna(data_ma['moving_avg_string_3'].ffill())
@@ -37,5 +37,12 @@ data_ma['string_8']= data_ma['string_8'].fillna(data_ma['moving_avg_string_8'].f
 data_ma['string_9']= data_ma['string_9'].fillna(data_ma['moving_avg_string_9'].ffill())
 data_ma['string_10'] = data_ma['string_10'].fillna(data_ma['moving_avg_string_10'].ffill())
 
-data[2730:2750].head(30)
+# Drop moving average columns
+
+data_ma[2730:2750].head(30)
+# %%
+data_ma["month_day"]=data['Timestamp'].dt.strftime('%m-%d')
+data_ma = data_ma.drop(columns=[f'moving_avg_string_{i}' for i in range(1, 11)]+['Timestamp'])
+
+data_ma.groupby(data_ma["month_day"]).sum(numeric_only=True)
 # %%
