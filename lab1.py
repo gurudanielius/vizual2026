@@ -72,6 +72,12 @@ for i in range(1, 11):
 # data_ma_days.iloc[[2737,2737-96,2737-192,2737-288,2737-384]] #paimsim 5 dienas atgal ir paziuresim ar oras buvo panasus
 
 
+vidurkio_uzpildymas=data.fillna(data.mean(numeric_only=True))
+
+print(vidurkio_uzpildymas[2730:2750])
+# Per vasara oro pokyciai (o tuo tarpu ir saules skleidziamos sviesos) gali buti labai smarkus, tad visos imties vidurkis nera labai 
+# puiki reiksme uzpildyti praleistus stebejimus;
+
 # %%
 data_day = data_ma.groupby(data_ma["month_day"]).sum(numeric_only=True)
 # %%
@@ -104,3 +110,11 @@ outliers["string_2"]
 #Skaičiuojamos koreliacijos
 correlation_matrix = data_day.select_dtypes(include=['number']).corr()
 print(correlation_matrix)
+# %%
+#Sklaida svarbi todel, kad dauguma ML metodų sprendžia pagal atstumus, o sklaida čia daug reiškia.
+#Jei vieno požymio sd didelė, jis natūraliai varijuoja smarkiai ir jo indėlis į atstumą būna didesnis. Jei kito sd maža jis mazai varijuoa ir jo indelis į atstuma buna mazas. Tada modelis netycia pradeda laikyti viena požymi svarbesniu.
+# %%
+numeric_cols = data.select_dtypes(include=['number']).columns
+normalized_minmax = (data[numeric_cols] - data[numeric_cols].min()) / (data[numeric_cols].max() - data[numeric_cols].min())
+# %% 
+standartizuotas = (data[numeric_cols] - data[numeric_cols].mean()) / data[numeric_cols].std()
