@@ -1,6 +1,8 @@
 #%%  
 import pandas as pd
 import matplotlib.pyplot as plt
+from pandas.plotting import scatter_matrix
+
 data = pd.read_csv('INV12.csv')
 data.describe()
 data[2730:2750]
@@ -118,3 +120,75 @@ numeric_cols = data.select_dtypes(include=['number']).columns
 normalized_minmax = (data[numeric_cols] - data[numeric_cols].min()) / (data[numeric_cols].max() - data[numeric_cols].min())
 # %% 
 standartizuotas = (data[numeric_cols] - data[numeric_cols].mean()) / data[numeric_cols].std()
+
+
+# %%
+#Spalvų paletė
+colors = ["#d00000", "#ffba08", "#cbff8c", "#8fe388", "#1b998b", "#3185fc",
+          "#5d2e8c", "#46237a", "#ff7b9c", "#ff9b85"]
+
+# Taškiniai grafikai
+columns = [f"string_{i}" for i in range(1, 11)]
+display_names = [f"Grandinė {i}" for i in range(1, 11)]
+
+temp_df = data_day[columns].copy()
+temp_df.columns = display_names  
+
+fig, axes = plt.subplots(figsize=(20, 20)) 
+
+sm = scatter_matrix(
+    temp_df,
+    alpha=0.6,
+    figsize=(20, 20),
+    diagonal='kde',
+    color=colors[5]  
+)
+
+plt.suptitle("Grandinėse pagamintos elektros sklaidos diagrama", fontsize=24)
+plt.savefig("grafikai/sklaidos.png")
+plt.show()
+
+# %%
+# Dažnio diagramos - histogramos
+fig, axes = plt.subplots(2, 5, figsize=(20, 8))
+axes = axes.flatten()
+columns = [f"string_{i}" for i in range(1, 11)]
+
+for i, col in enumerate(columns):
+    axes[i].hist(data_day[col], bins=15, color = colors[i], 
+                 alpha = 0.7, edgecolor=colors[i])
+    axes[i].set_title(col)
+    axes[i-1].set_title(f"Grandinė {i}")
+
+fig.supxlabel("Elektra, pagaminta grandinėje (kWh)")
+fig.supylabel("Dažnis")
+fig.suptitle("Elektros, pagamintos grandinėse per dieną, histograma", fontsize=18)
+
+plt.tight_layout()
+plt.savefig("grafikai/histogramos.png")
+plt.show()
+
+# %%
+# Stačiakampės diagramos
+columns = [f"string_{i}" for i in range(1, 11)]
+data = [data_day[col] for col in columns]
+
+plt.figure(figsize=(12, 6))
+box = plt.boxplot(data, patch_artist=True)
+
+for patch, c in zip(box["boxes"], colors):
+    patch.set_facecolor(c)
+    patch.set_alpha(0.7)
+
+plt.xticks(
+    range(1, 11),
+    [f"Grandinė {i}" for i in range(1, 11)]
+)
+
+plt.ylabel("Elektra, pagaminta grandinėje (kWh)")
+plt.title("Pagamintos elektros pasiskirstymas pagal grandines")
+
+plt.grid(axis="y", alpha=0.3)
+plt.savefig("grafikai/boxplotai.png")
+plt.show()
+
