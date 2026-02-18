@@ -134,7 +134,7 @@ display_names = [f"Grandinė {i}" for i in range(1, 11)]
 temp_df = data_day[columns].copy()
 temp_df.columns = display_names  
 
-fig, axes = plt.subplots(figsize=(20, 20)) 
+# fig, axes = plt.subplots(figsize=(20, 20)) 
 
 sm = scatter_matrix(
     temp_df,
