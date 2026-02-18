@@ -2,6 +2,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from pandas.plotting import scatter_matrix
+import matplotlib.dates as mdates
 
 data = pd.read_csv('INV12.csv')
 data.describe()
@@ -134,8 +135,6 @@ display_names = [f"Grandinė {i}" for i in range(1, 11)]
 temp_df = data_day[columns].copy()
 temp_df.columns = display_names  
 
-# fig, axes = plt.subplots(figsize=(20, 20)) 
-
 sm = scatter_matrix(
     temp_df,
     alpha=0.6,
@@ -192,3 +191,39 @@ plt.grid(axis="y", alpha=0.3)
 plt.savefig("grafikai/boxplotai.png")
 plt.show()
 
+#%%
+#Laiko eilučių grafikai
+
+data_day.index = pd.to_datetime(data_day.index, format="%m-%d")
+
+columns = [f"string_{i}" for i in range(1, 11)]
+display_names = [f"Grandinė {i}" for i in range(1, 11)]
+
+plt.figure(figsize=(20, 8))
+
+for i, col in enumerate(columns):
+    plt.plot(
+        data_day.index,
+        data_day[col],
+        label=display_names[i],
+        linewidth=2,
+        color=colors[i]
+    )
+
+ax = plt.gca()
+ax.xaxis.set_major_locator(mdates.DayLocator(interval=10))
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+
+plt.xticks(rotation=45)
+
+plt.xlabel("Data")
+plt.ylabel("Pagaminta elektra (kWh)")
+plt.title("Grandinių elektros gamybos kitimas laike")
+plt.legend()
+plt.grid(alpha=0.3)
+
+plt.tight_layout()
+plt.savefig("grafikai/laikute.png")
+plt.show()
+
+# %%
