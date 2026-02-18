@@ -11,8 +11,7 @@ data[90:110:4]["month_day"] #paimsim dienas ir sugrupuosim ir sudesim i viena di
 data.groupby(data["month_day"]).sum(numeric_only=True)#%% 
 data.columns = ['Timestamp'] + [f'string_{i}' for i in range(1, 11)] + ['month_day']
 
-
-
+#%%
 ### NaN reikšmių užpildymas naudojant slenkamąjį vidurkį
 data_ma=data.copy()
 data_ma['moving_avg_string_1'] = data_ma['string_1'].rolling(window=5).mean()
@@ -40,9 +39,41 @@ data_ma['string_10'] = data_ma['string_10'].fillna(data_ma['moving_avg_string_10
 # Drop moving average columns
 
 data_ma[2730:2750].head(30)
-# %%
+
 data_ma["month_day"]=data['Timestamp'].dt.strftime('%m-%d')
 data_ma = data_ma.drop(columns=[f'moving_avg_string_{i}' for i in range(1, 11)]+['Timestamp'])
 
-data_ma.groupby(data_ma["month_day"]).sum(numeric_only=True)
+data_day = data_ma.groupby(data_ma["month_day"]).sum(numeric_only=True)
+# %%
+#Aprašomoji statistika
+data_day.describe()
+
+# %%
+#Taškai atsiskyrėliai
+numeric = data_day.select_dtypes(include="number")
+
+outliers = {}
+
+for col in numeric.columns:
+    Q1 = numeric[col].quantile(0.25)
+    Q3 = numeric[col].quantile(0.75)
+    IQR = Q3 - Q1
+
+    lower = Q1 - 1.5 * IQR
+    upper = Q3 + 1.5 * IQR
+
+    mask = (numeric[col] < lower) | (numeric[col] > upper)
+    outliers[col] = numeric.loc[mask, col]
+
+for col, vals in outliers.items():
+    print(f"{col}: {len(vals)} outliers")
+
+outliers["string_2"]
+
+# %%
+#Skaičiuojamos koreliacijos
+correlation_matrix = data_day.select_dtypes(include=['number']).corr()
+print(correlation_matrix)
+
+
 # %%
