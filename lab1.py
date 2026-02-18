@@ -45,4 +45,50 @@ data_ma["month_day"]=data['Timestamp'].dt.strftime('%m-%d')
 data_ma = data_ma.drop(columns=[f'moving_avg_string_{i}' for i in range(1, 11)]+['Timestamp'])
 
 data_ma.groupby(data_ma["month_day"]).sum(numeric_only=True)
+
+# %%
+data_ma_days = data.copy()
+intervals_per_day = 96  
+
+for i in range(1, 11):
+    col_name = f'string_{i}'
+    # Get values from 1 day ago, 2 days ago, ..., 5 days ago
+    shifted_values = [data_ma_days[col_name].shift(intervals_per_day * day) for day in range(1, 6)]
+    data_ma_days[f'moving_avg_string_{i}'] = pd.concat(shifted_values, axis=1).mean(axis=1)
+
+
+
+for i in range(1, 11):
+    col_name = f'string_{i}'
+    data_ma_days[col_name] = data_ma_days[col_name].fillna(data_ma_days[f'moving_avg_string_{i}'].ffill())
+
+
+##TODO: Check if its alright:
+
+# Test: verify calculation is correct
+# Pick a row far enough to have 5 days of history
+test_row = 500
+test_col = 'string_1'
+
+print(f"Test row: {test_row}")
+print(f"Timestamp: {data_ma_days.loc[test_row, 'Timestamp']}")
+print(f"Current value: {data_ma_days.loc[test_row, test_col]}")
+print()
+
+# Show values from 1-5 days ago at same time
+values_prev_days = []
+for day in range(1, 6):
+    prev_row = test_row - (intervals_per_day * day)
+    if prev_row >= 0:
+        val = data_ma_days.loc[prev_row, test_col]
+        print(f"{day} day(s) ago (row {prev_row}): {val}")
+        values_prev_days.append(val)
+
+manual_average = sum(values_prev_days) / len(values_prev_days)
+calculated_average = data_ma_days.loc[test_row, f'moving_avg_string_1']
+
+print(f"Manual average of previous 5 days: {manual_average}")
+print(f"Calculated moving average: {calculated_average}")
+
+data_ma_days[2730:2750]
 # %%
