@@ -7,8 +7,7 @@ data[2730:2750]
 # Praleistų stebėjimų nėra.
 data['Timestamp']= pd.to_datetime(data['Timestamp']) #Pakeiciam i datetime agregavimo logikai veliau
 data["month_day"]=data['Timestamp'].dt.strftime('%m-%d')
-data[90:110:4]["month_day"] #paimsim dienas ir sugrupuosim ir sudesim i viena diena
-data.groupby(data["month_day"]).sum(numeric_only=True)#%% 
+data.groupby(data["month_day"]).sum(numeric_only=True)
 data.columns = ['Timestamp'] + [f'string_{i}' for i in range(1, 11)] + ['month_day']
 
 #%%
@@ -38,9 +37,6 @@ data_ma['string_10'] = data_ma['string_10'].fillna(data_ma['moving_avg_string_10
 
 # Drop moving average columns
 
-data_ma[2730:2750].head(30)
-
-data_ma["month_day"]=data['Timestamp'].dt.strftime('%m-%d')
 data_ma = data_ma.drop(columns=[f'moving_avg_string_{i}' for i in range(1, 11)]+['Timestamp'])
 
 data_ma.groupby(data_ma["month_day"]).sum(numeric_only=True)
@@ -51,47 +47,32 @@ intervals_per_day = 96
 
 for i in range(1, 11):
     col_name = f'string_{i}'
-    # Get values from 1 day ago, 2 days ago, ..., 5 days ago
-    shifted_values = [data_ma_days[col_name].shift(intervals_per_day * day) for day in range(1, 6)]
+    shifted_values = [data_ma_days[col_name].shift(intervals_per_day * day) for day in range(1, 4)]
     data_ma_days[f'moving_avg_string_{i}'] = pd.concat(shifted_values, axis=1).mean(axis=1)
-
-
 
 for i in range(1, 11):
     col_name = f'string_{i}'
     data_ma_days[col_name] = data_ma_days[col_name].fillna(data_ma_days[f'moving_avg_string_{i}'].ffill())
 
+#^
+##        0      1      2      3      4
+# 0    NaN    NaN    NaN    NaN    NaN
+# 1    NaN    NaN    NaN    NaN    NaN
+# ...
+# 96   10.0   NaN    NaN    NaN    NaN      
+# 97   11.0   NaN    NaN    NaN    NaN
+# ...
+# 192  100.0  10.0   NaN    NaN    NaN      
+# 193  101.0  11.0   NaN    NaN    NaN
 
-##TODO: Check if its alright:
+#Minusas sio metodo yra tai kad reikia daugiau stebejimu, lieka daugiau neuzpildytu atveju, taip pat
+#praeitu penkiu dienu oras gali skirtis labai skirtis nuo kitos dienos, todel nebutina kad tai bus geras budas uzpildyti trukstamus duomenis;
 
-# Test: verify calculation is correct
-# Pick a row far enough to have 5 days of history
-test_row = 500
-test_col = 'string_1'
+#pvz 06-29 12:15
+# data_ma_days.iloc[[2737,2737-96,2737-192,2737-288,2737-384]] #paimsim 5 dienas atgal ir paziuresim ar oras buvo panasus
 
-print(f"Test row: {test_row}")
-print(f"Timestamp: {data_ma_days.loc[test_row, 'Timestamp']}")
-print(f"Current value: {data_ma_days.loc[test_row, test_col]}")
-print()
 
-# Show values from 1-5 days ago at same time
-values_prev_days = []
-for day in range(1, 6):
-    prev_row = test_row - (intervals_per_day * day)
-    if prev_row >= 0:
-        val = data_ma_days.loc[prev_row, test_col]
-        print(f"{day} day(s) ago (row {prev_row}): {val}")
-        values_prev_days.append(val)
-
-manual_average = sum(values_prev_days) / len(values_prev_days)
-calculated_average = data_ma_days.loc[test_row, f'moving_avg_string_1']
-
-print(f"Manual average of previous 5 days: {manual_average}")
-print(f"Calculated moving average: {calculated_average}")
-
-data_ma_days[2730:2750]
 # %%
-
 data_day = data_ma.groupby(data_ma["month_day"]).sum(numeric_only=True)
 # %%
 #Aprašomoji statistika
@@ -123,4 +104,3 @@ outliers["string_2"]
 #Skaičiuojamos koreliacijos
 correlation_matrix = data_day.select_dtypes(include=['number']).corr()
 print(correlation_matrix)
-
