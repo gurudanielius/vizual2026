@@ -112,6 +112,18 @@ outliers["string_2"]
 #Skaičiuojamos koreliacijos
 correlation_matrix = data_day.select_dtypes(include=['number']).corr()
 print(correlation_matrix)
+
+# %%
+# Koreliacijos šilumos žemėlapis
+import seaborn as sns
+
+plt.figure(figsize=(12, 10))
+sns.heatmap(correlation_matrix, annot=True, fmt='.2f', cmap='coolwarm', 
+            center=0, square=True, linewidths=1, cbar_kws={"shrink": 0.8})
+plt.title("Koreliacijos šilumos žemėlapis", fontsize=18)
+plt.tight_layout()
+plt.savefig("grafikai/koreliacijos_heatmap.png")
+plt.show()
 # %%
 #Sklaida svarbi todel, kad dauguma ML metodų sprendžia pagal atstumus, o sklaida čia daug reiškia.
 #Jei vieno požymio sd didelė, jis natūraliai varijuoja smarkiai ir jo indėlis į atstumą būna didesnis. Jei kito sd maža jis mazai varijuoa ir jo indelis į atstuma buna mazas. Tada modelis netycia pradeda laikyti viena požymi svarbesniu.
@@ -124,7 +136,7 @@ standartizuotas = (data[numeric_cols] - data[numeric_cols].mean()) / data[numeri
 
 # %%
 #Spalvų paletė
-colors = ["#d00000", "#ffba08", "#cbff8c", "#8fe388", "#1b998b", "#3185fc",
+colors = ["#D00000", "#ffba08", "#cbff8c", "#8fe388", "#1b998b", "#3185fc",
           "#5d2e8c", "#46237a", "#ff7b9c", "#ff9b85"]
 
 # Taškiniai grafikai
@@ -141,7 +153,7 @@ sm = scatter_matrix(
     alpha=0.6,
     figsize=(20, 20),
     diagonal='kde',
-    color=colors[5]  
+    color=colors[2]  
 )
 
 plt.suptitle("Grandinėse pagamintos elektros sklaidos diagrama", fontsize=24)
