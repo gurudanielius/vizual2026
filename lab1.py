@@ -3,12 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pandas.plotting import scatter_matrix
 import matplotlib.dates as mdates
-import seaborn as sns
+# import seaborn as sns
 
 
 data = pd.read_csv('INV12.csv')
 data.describe()
-data[2730:2750]
 # Praleistų stebėjimų nėra.
 data['Timestamp']= pd.to_datetime(data['Timestamp']) #Pakeiciam i datetime agregavimo logikai veliau
 data["month_day_hour"]=data['Timestamp'].dt.strftime('%m-%d-%H')
@@ -18,7 +17,6 @@ data.columns = ['Timestamp'] + [f'string_{i}' for i in range(1, 11)] + ['month_d
 
 ## NUSPRENDEME NA REIKSMES TIESIOG PASALINTI
 data=data.dropna(subset=[f'string_{i}' for i in range(1, 11)])
-
 # %%
 
 filtered_data = data[data['Timestamp'].dt.hour.between(10, 17)]
