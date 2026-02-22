@@ -68,7 +68,7 @@ sns.heatmap(
     cbar_kws={"shrink": 0.8}
 )
 
-plt.title("Koreliacijos šilumos žemėlapis", fontsize=26)
+plt.title("Koreliacijų šilumos žemėlapis", fontsize=24)
 plt.tight_layout()
 plt.savefig("grafikai/koreliacijos_heatmap.png")
 plt.show()
@@ -83,7 +83,7 @@ standartizuotas = (data_hourly[numeric_cols] - data_hourly[numeric_cols].mean())
 #%%
 colors = ["#D00000", "#ffba08", "#cbff8c", "#8fe388", "#1b998b", "#3185fc",
           "#5d2e8c", "#46237a", "#ff7b9c", "#ff9b85"]
-# Taškiniai grafikai
+
 columns = [f"string_{i}" for i in range(1, 11)]
 display_names = [f"Grandinė {i}" for i in range(1, 11)]
 
@@ -97,8 +97,10 @@ sm = scatter_matrix(
     diagonal='kde',
     color=colors[5]  
 )
-
-plt.suptitle("Grandinėse pagamintos elektros sklaidos diagrama", fontsize=32)
+plt.suptitle(
+    "Grandinėse pagamintos elektros energijos sklaidos diagrama",
+    fontsize=30)
+plt.tight_layout(rect=[0, 0, 1, 0.97])
 plt.savefig("grafikai/sklaidos.png")
 
 #%%
@@ -113,9 +115,9 @@ for i, col in enumerate(columns):
     axes[i].set_title(col)
     axes[i].set_title(f"Grandinė {i+1}")
 
-fig.supxlabel("Elektra, pagaminta grandinėje (kWh)")
+fig.supxlabel("Pagaminta elektros energija (kWh)")
 fig.supylabel("Dažnis")
-fig.suptitle("Elektros, pagamintos grandinėse per valandą, histograma", fontsize=26)
+fig.suptitle("Pagaminamos elektros energijos pasiskirstymas tarp grandinių", fontsize=26)
 
 plt.tight_layout()
 plt.savefig("grafikai/histogramos.png")
@@ -138,8 +140,8 @@ plt.xticks(
     [f"Grandinė {i}" for i in range(1, 11)]
 )
 
-plt.ylabel("Elektra, pagaminta grandinėje (kWh)")
-plt.title("Per valandą pagaminta elektra skirtingose grandinėse") 
+plt.ylabel("Pagaminta elektros energija (kWh)")
+plt.title("Pagamintos elektros energijos palyginimas tarp grandinių") 
 
 plt.grid(axis="y", alpha=0.3)
 plt.savefig("grafikai/boxplotai.png")
@@ -171,7 +173,7 @@ tick_positions = range(0, len(data_hourly.index), 16)
 ax.set_xticks(tick_positions)
 ax.set_xticklabels([data_hourly.index[i][:5] for i in tick_positions])
 plt.xlabel("Data")
-plt.title("Pagamintos elektros grandinėse šilumos žemėlapis", fontsize=24)
+plt.title("Pagamintos elektros energijos dinamika", fontsize=24)
 plt.tight_layout()
 plt.savefig("grafikai/laikute_heatmap.png")
 plt.show()
@@ -190,9 +192,9 @@ for i, col in enumerate(columns):
     axes[i].set_title(col)
     axes[i].set_title(f"Grandinė {i+1}")
 
-fig.supxlabel("Elektra, pagaminta grandinėje (kWh)")
+fig.supxlabel("Standartizuoti vienetai")
 fig.supylabel("Dažnis")
-fig.suptitle("Elektros, pagamintos grandinėse per valandą, histograma (standartizuotos reikšmės)", fontsize=24)
+fig.suptitle("Pagaminamos elektros energijos pasiskirstymas tarp grandinių (standartizuotos reikšmės)", fontsize=26)
 
 plt.tight_layout()
 plt.savefig("grafikai/histogramos_standartizuotos.png")
@@ -215,8 +217,8 @@ plt.xticks(
     [f"Grandinė {i}" for i in range(1, 11)]
 )
 
-plt.ylabel("Elektra, pagaminta grandinėje (kWh)")
-plt.title("Per valandą pagaminta elektra skirtingose grandinėse (standartizuotos reikšmės)", fontsize=15) 
+plt.ylabel("Standartizuoti vienetai")
+plt.title("Pagamintos elektros energijos palyginimas tarp grandinių (standartizuotos reikšmės)", fontsize=15) 
 
 plt.grid(axis="y", alpha=0.3)
 plt.savefig("grafikai/boxplotai_standartizuoti.png")
@@ -226,7 +228,7 @@ plt.show()
 #heatmapas laikutei standartizuotos reikšmės
 
 plt.figure(figsize=(20, 8))
-sns.heatmap(standartizuotas[columns].T, cmap='YlOrRd', cbar_kws={'label': 'kWh'})
+sns.heatmap(standartizuotas[columns].T, cmap='YlOrRd', cbar_kws={'label': 'Standartizuoti vienetai'})
 ax = plt.gca()
 new_labels = [f"Grandinė {i}" for i in range(1, 11)]
 ax.set_yticklabels(new_labels, rotation=0)
@@ -234,13 +236,14 @@ tick_positions = range(0, len(standartizuotas.index), 16)
 ax.set_xticks(tick_positions)
 ax.set_xticklabels([standartizuotas.index[i][:5] for i in tick_positions])
 plt.xlabel("Data")
-plt.title("Pagamintos elektros grandinėse šilumos žemėlapis (standartizuotos reikšmės)",fontsize=24)
+plt.title("Pagamintos elektros energijos dinamika (standartizuotos reikšmės)",fontsize=24)
 plt.tight_layout()
 plt.savefig("grafikai/laikute_heatmap_standartizuotas.png")
 plt.show()
 print(tick_positions)
 
-#%%
+
+# %%
 
 columns = [f"string_{i}" for i in range(1, 11)]
 display_names = [f"Grandinė {i}" for i in range(1, 11)]
@@ -253,8 +256,12 @@ sm = scatter_matrix(
     alpha=0.6,
     figsize=(20, 20),
     diagonal='kde',
-    color=colors[5]  
+    color=colors[5]
 )
 
-plt.suptitle("Grandinėse pagamintos elektros sklaidos diagrama (standartizuotos reikšmės)", fontsize=24)
+plt.suptitle(
+    "Grandinėse pagamintos elektros energijos sklaidos diagrama (standartizuotos reikšmės)",
+    fontsize=30)
+plt.tight_layout(rect=[0, 0, 1, 0.97])
+
 plt.savefig("grafikai/sklaidos_standartizuoti.png")
