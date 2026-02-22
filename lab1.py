@@ -108,7 +108,7 @@ plt.savefig("grafikai/sklaidos.png")
 
 # %%
 # Dažnio diagramos - histogramos
-fig, axes = plt.subplots(2, 5, figsize=(20, 8), sharey=True)
+fig, axes = plt.subplots(2, 5, figsize=(20, 8), sharey=True, sharex=True)
 axes = axes.flatten()
 columns = [f"string_{i}" for i in range(1, 11)]
 
@@ -185,7 +185,7 @@ print(tick_positions)
 # %%
 #Standartizuotos aibes histogramos
 
-fig, axes = plt.subplots(2, 5, figsize=(20, 8), sharey=True)
+fig, axes = plt.subplots(2, 5, figsize=(20, 8), sharey=True, sharex=True)
 axes = axes.flatten()
 columns = [f"string_{i}" for i in range(1, 11)]
 
