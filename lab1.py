@@ -119,7 +119,6 @@ fig.supxlabel("Pagaminta elektros energija (kWh)")
 fig.supylabel("Dažnis")
 fig.suptitle("Pagaminamos elektros energijos pasiskirstymas tarp grandinių", fontsize=26)
 
-plt.tight_layout()
 plt.savefig("grafikai/histogramos.png")
 plt.show()
 
@@ -144,6 +143,10 @@ plt.ylabel("Pagaminta elektros energija (kWh)")
 plt.title("Pagamintos elektros energijos palyginimas tarp grandinių") 
 
 plt.grid(axis="y", alpha=0.3)
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
+plt.gca().spines['left'].set_visible(False)
+plt.gca().spines['bottom'].set_visible(False)
 plt.savefig("grafikai/boxplotai.png")
 plt.show()
 
@@ -221,6 +224,10 @@ plt.ylabel("Standartizuoti vienetai")
 plt.title("Pagamintos elektros energijos palyginimas tarp grandinių (standartizuotos reikšmės)", fontsize=15) 
 
 plt.grid(axis="y", alpha=0.3)
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
+plt.gca().spines['left'].set_visible(False)
+plt.gca().spines['bottom'].set_visible(False)
 plt.savefig("grafikai/boxplotai_standartizuoti.png")
 plt.show()
 
@@ -265,3 +272,11 @@ plt.suptitle(
 plt.tight_layout(rect=[0, 0, 1, 0.97])
 
 plt.savefig("grafikai/sklaidos_standartizuoti.png")
+# %%
+data_agg=data_hourly.copy()
+data_agg["month"]= data_hourly.index.str[0:2].astype(str)
+data_agg=data_agg.groupby("month").sum(numeric_only=True)
+data_agg["total"]=data_agg.sum(axis=1) 
+data_agg=data_agg.drop(columns=[f"string_{i}" for i in range(1, 11)])
+data_agg.plot(kind="bar", y="total", legend=False, color=colors[5], alpha=0.7)
+plt.xlabel("Mėnuo")
