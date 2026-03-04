@@ -6,22 +6,22 @@ from sklearn.manifold import TSNE
 #IRIS WITH CLASS TSNE
 
 
-# df = pd.read_csv('iris_with_class.txt', sep="\t", header=None,
-#                  names=["sepal_length", "sepal_width", "petal_length", "petal_width", "class"])
-# print(df.head())
+df = pd.read_csv('iris_with_class.txt', sep="\t", header=None,
+                 names=["sepal_length", "sepal_width", "petal_length", "petal_width", "class"])
+print(df.head())
 
-# X = df.iloc[:, :4].values
-# y = df["class"].values
+X = df.iloc[:, :4].values
+y = df["class"].values
 
-# tsne = TSNE() #čia nurodyti hiperparametrus
-# X_2d = tsne.fit_transform(X)
+tsne = TSNE() #čia nurodyti hiperparametrus
+X_2d = tsne.fit_transform(X)
 
-# for label in df["class"].unique():
-#     plt.scatter(X_2d[y == label, 0], X_2d[y == label, 1], label=label)
+for label in df["class"].unique():
+    plt.scatter(X_2d[y == label, 0], X_2d[y == label, 1], label=label)
 
-# plt.title("t-SNE projekcija – Iris duomenys")
-# plt.legend()
-# plt.show()
+plt.title("t-SNE projekcija – Iris duomenys")
+plt.legend()
+plt.show()
 
 
 # MNIST TRAIN TSNE
@@ -29,7 +29,7 @@ df = pd.read_csv("mnist_train.csv")
 X = df.iloc[:, 1:].values
 y = df.iloc[:, 0].values
 
-# Sumažinti imtį
+# Sumažinta imtis, ištrynus krauna bent 10 min.
 idx = np.random.RandomState(42).choice(len(X), size=5000, replace=False)
 X, y = X[idx], y[idx]
 
