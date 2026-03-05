@@ -3,12 +3,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.manifold import TSNE
+from sklearn.preprocessing import StandardScaler
 #%%
 df = pd.read_csv('./iris_with_class.txt', sep="\t", header=None,
                  names=["sepal_length", "sepal_width", "petal_length", "petal_width", "class"])
 
 X = df.iloc[:, :4].values
 y = df["class"].values
+
+# scaler = StandardScaler()
+# X = scaler.fit_transform(X)
 
 tsne = TSNE(random_state=42)
 tsne.fit_transform(X)
@@ -95,12 +99,12 @@ df = pd.read_csv("mnist_train.csv")
 X = df.iloc[:, 1:].values
 y = df.iloc[:, 0].values
 
-idx = np.random.RandomState(42).choice(len(X), size=10000, replace=False)
+idx = np.random.RandomState(42).choice(len(X), size=5000, replace=False)
 X, y = X[idx], y[idx]
 np.unique(y)
 
 tsne = TSNE(
-    perplexity=30,
+    perplexity=3000,
     learning_rate=50,
     init="pca",
     max_iter=2500,
@@ -108,65 +112,71 @@ tsne = TSNE(
 )
 
 X_2d = tsne.fit_transform(X)
-
+min_val = min(X_2d[:, 0].min(), X_2d[:, 1].min())
+max_val = max(X_2d[:, 0].max(), X_2d[:, 1].max())
 plt.figure(figsize=(8,6))
 
 for label in np.unique(y):
     mask = y == label
     plt.scatter(X_2d[mask, 0], X_2d[mask, 1], label=label, s=8)
 
-plt.xlabel("t-SNE 1")
-plt.ylabel("t-SNE 2")
 plt.legend()
+plt.xlim(min_val, max_val)
+plt.ylim(min_val, max_val)
+plt.axis('equal')
 plt.show()
 #%%
 X = np.loadtxt("ellipsoid.50d10c.8.txt")
 tsne = TSNE(
-    perplexity=5,
-    learning_rate=20,
-    early_exaggeration=4,
+    perplexity=3000,
+    learning_rate=500,
+    early_exaggeration=12,
     max_iter=1000
 )
 
 X_2d = tsne.fit_transform(X)
+min_val = min(X_2d[:, 0].min(), X_2d[:, 1].min())
+max_val = max(X_2d[:, 0].max(), X_2d[:, 1].max())
 plt.figure(figsize=(7,6))
 plt.scatter(X_2d[:,0], X_2d[:,1], s=8)
-plt.xlabel("t-SNE 1")
-plt.ylabel("t-SNE 2")
-plt.title("t-SNE projekcija ellipsoid duomenims (perplesiškumas=5)")
+plt.title("t-SNE projekcija ellipsoid duomenims (perpleksiškumas=3000)")
+plt.xlim(min_val, max_val)
+plt.ylim(min_val, max_val)
+plt.axis('equal')
 plt.show()
 #%%
-# X = np.loadtxt("iris.txt")
-# tsne = TSNE(
-#     perplexity=5,
-#     learning_rate=50,
-#     early_exaggeration=12,
-#     max_iter=500
-# )
+X = np.loadtxt("iris.txt")
+tsne = TSNE(
+    perplexity=5,
+    learning_rate=50,
+    early_exaggeration=12,
+    max_iter=500
+)
 
-# X_2d = tsne.fit_transform(X)    
-# plt.figure(figsize=(7,6))
-# plt.scatter(X_2d[:,0], X_2d[:,1], s=8)
-# plt.xlabel("t-SNE 1")
-# plt.ylabel("t-SNE 2")
-# plt.title("t-SNE projekcija iris duomenims")
-# plt.show()
+X_2d = tsne.fit_transform(X)    
+plt.figure(figsize=(7,6))
+plt.scatter(X_2d[:,0], X_2d[:,1], s=8)
+plt.title("t-SNE projekcija iris duomenims")
+plt.show()
 #%%
 X = pd.read_csv("swiss_roll_example.csv", sep=";")
 
 tsne = TSNE(
-    perplexity=15,
-    learning_rate=10,
-    early_exaggeration=12,
+    perplexity=350,
+    learning_rate=400,
+    early_exaggeration=4,
     max_iter=5000
 )
 
 X_2d = tsne.fit_transform(X)
+min_val = min(X_2d[:, 0].min(), X_2d[:, 1].min())
+max_val = max(X_2d[:, 0].max(), X_2d[:, 1].max())
 plt.figure(figsize=(8,6))
 plt.scatter(X_2d[:,0], X_2d[:,1], s=8)
-plt.xlabel("t-SNE 1")
-plt.ylabel("t-SNE 2")
 plt.title("t-SNE projekcija swiss roll duomenims")
+plt.xlim(min_val, max_val)
+plt.ylim(min_val, max_val)
+plt.axis('equal')
 plt.show()
 
 #%%
