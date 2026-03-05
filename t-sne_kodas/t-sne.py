@@ -30,9 +30,9 @@ axes[0].set_title("Originalūs duomenys be t-SNE", style="italic")
 # t-SNE su skirtingais perplexity
 for ax, perp in zip(axes[1:], perplexity_values):
     X_2d = TSNE(perplexity=perp, random_state=42).fit_transform(X)
-    for label in df["class"].unique():
-        mask = y == label
-        ax.scatter(X_2d[mask, 0], X_2d[mask, 1], label=label)
+    for label, group in df.groupby("class"):
+        idx = group.index
+        ax.scatter(X_2d[idx, 0], X_2d[idx, 1], label=label)
     ax.set_title(f"Perpleksiškumas: {perp}")
 
 # Rėmeliai visiems grafikiems
