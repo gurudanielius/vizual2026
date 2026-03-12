@@ -1,6 +1,2 @@
 # vizual2026
-## Žiaurus pliusas
-
-as esu danielius
-as esu emilija
-as esu benas 
+## Čia vieta, kur vyksta rodymas, vizualizavimas, pateikimas vaizdo formatu viskas
