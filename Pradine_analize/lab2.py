@@ -21,9 +21,11 @@ mapping["category"]=np.where(mapping["sum"] > mapping["sum"].quantile(0.75), "Hi
 data["category"]=data["month_day"].map(mapping["category"])
 data["hour"]=data['Timestamp'].dt.strftime('%H:%M')
 
+data=data.dropna(subset=[f'string_{i}' for i in range(1, 11)])
+
 # Melt to convert string columns into rows
 melted = data.melt(
-    id_vars=['month_day', 'hour'],
+    id_vars=['month_day', 'hour', 'category'],
     value_vars=[f'string_{i}' for i in range(1, 11)],
     var_name='string',
     value_name='value'
@@ -31,91 +33,95 @@ melted = data.melt(
 
 # Pivot with month_day and string as index, hour as columns
 result = melted.pivot_table(
-    index=['month_day', 'string'],
-    columns='hour',
+    index=['month_day', 'string', 'category'],
+    columns="hour",
     values='value',
     aggfunc='sum'
 )
 
 result["month_day"] = result.index.get_level_values('month_day')
 result["string"] = result.index.get_level_values('string')
+result["category"] = result.index.get_level_values('category')
 result.reset_index(drop=True, inplace=True)
 
 cols = result.columns.tolist()
-cols = ['month_day', 'string'] + [col for col in cols if col not in ['month_day', 'string']]
+cols = ['month_day', 'string', 'category'] + [col for col in cols if col not in ['month_day', 'string', 'category']]
 result = result[cols]
 result=result.sort_values(by=['month_day', 'string']).reset_index(drop=True)
 result.index.name = 'id'
 data_final=result
 
+data_high = data_final[data_final['category'] == 'High'].drop(columns=['category', 'month_day'])
+data_medium = data_final[data_final['category'] == 'Medium'].drop(columns=['category', 'month_day'])
+data_low = data_final[data_final['category'] == 'Low'].drop(columns=['category', 'month_day'])
+
+#%%
+    
 # %%
-data["month_day_hour"]=data['Timestamp'].dt.strftime('%m-%d-%H')
+#mum nereik standartizuot, nes musu duomenys yra toje pacioje skaleje
+#TSNE high
+X_high, X_medium, X_low = data_high.drop(columns=['string']).fillna(0), data_medium.drop(columns=['string']).fillna(0), data_low.drop(columns=['string']).fillna(0)
 
-data.groupby(data["month_day_hour"]).sum(numeric_only=True)
-data.columns = ['Timestamp'] + [f'string_{i}' for i in range(1, 11)] + ['month_day_hour']
+tsne_high = TSNE(
+    n_components=2,
+    random_state=80085,
+    init='pca',
+    perplexity=30,
+    learning_rate='auto',
+    metric='euclidean',
+    max_iter=1000
+)
 
-## NUSPRENDEME NA REIKSMES TIESIOG PASALINTI
-data=data.dropna(subset=[f'string_{i}' for i in range(1, 11)])
-filtered_data = data[data['Timestamp'].dt.hour.between(10, 17)]
+tsne_high_result = tsne_high.fit_transform(X_high)
 
-# %%
-#Standartizavimas
-X = filtered_data.drop(columns=['Timestamp', 'month_day_hour'])
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# %%
-#PCA
-pca = PCA(n_components=2, random_state=1)
-X_pca = pca.fit_transform(X_scaled)
-
-plt.figure(figsize=(8, 6))
-plt.scatter(X_pca[:, 0], X_pca[:, 1], s=8)
-plt.title("PCA projekcija")
-plt.axis('equal')
-plt.show()
-
+plot_projection(tsne_high_result, X_high.to_numpy(), color_col=0, title="t-SNE projekcija (High)")
 
 # %%
-#t-SNE
-# Color points by one of the original features (columns) in X_scaled.
-# Change `color_col` to 0..9 to color by a different source column.
-color_col = 0
+#TSNE medium
 
-tsne = TSNE(n_components=2, random_state=1)
-X_2d = tsne.fit_transform(X_scaled)
-min_val = min(X_2d[:, 0].min(), X_2d[:, 1].min())
-max_val = max(X_2d[:, 0].max(), X_2d[:, 1].max())
-plt.figure(figsize=(8, 6))
-plt.scatter(X_2d[:, 0], X_2d[:, 1], s=8, c=X_scaled[:, color_col], cmap='viridis')
-plt.colorbar(label=f"Feature {color_col} value")
-plt.title("t-SNE projekcija")
-plt.xlim(min_val, max_val)
-plt.ylim(min_val, max_val)
-plt.axis('equal')
-plt.show()
+tsne_medium = TSNE(
+    n_components=2,
+    random_state=80085,
+    init='pca',
+    perplexity=5,
+    learning_rate='auto',
+    metric='euclidean',
+    max_iter=1000
+)
 
-# %%
-#MDS - NEREKOMENDUOJU LEISTI, NES LABAI ILGAI KRAUNA
-mds = MDS(n_components=2, random_state=1, dissimilarity="euclidean")
-X_mds = mds.fit_transform(X_scaled)
-
-plt.figure(figsize=(8, 6))
-plt.scatter(X_mds[:, 0], X_mds[:, 1], s=8)
-plt.title("MDS projekcija")
-plt.axis("equal")
-plt.show()
+tsne_medium_result = tsne_medium.fit_transform(X_medium)
+plot_tsne_projection(tsne_medium_result, X_medium.to_numpy(), color_col=0, title="t-SNE projekcija (Medium)")
 
 
-# %%
-#UMAP
-reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, metric="euclidean", random_state=1)
-X_umap = reducer.fit_transform(X_scaled)
+#%%
+#TSNE low
 
-plt.figure(figsize=(8, 6))
-plt.scatter(X_umap[:, 0], X_umap[:, 1], s=8)
-plt.title("UMAP projekcija")
-plt.axis("equal")
-plt.show()
+tsne_low = TSNE(
+    n_components=2,
+    random_state=80085,
+    init='pca',
+    perplexity=5,
+    learning_rate='auto',
+    metric='euclidean',
+    max_iter=1000
+)
 
+tsne_low_result = tsne_low.fit_transform(X_low)
+plot_tsne_projection(tsne_low_result, X_low.to_numpy(), color_col=0, title="t-SNE projekcija (Low)")
 
+#%%
+#UMAP high
+
+#%%
+#UMAP medium
+
+#UMAP low
+
+#%%
+#MDS high
+
+#%%
+#MDS medium
+
+#%%
+#MDS low
