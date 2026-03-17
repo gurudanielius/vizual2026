@@ -83,7 +83,7 @@ def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsiz
     palette = sns.color_palette("husl", len(unique_labels))
     color_map = dict(zip(label_names, palette))
 
-    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, constrained_layout=True)
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, constrained_layout=True, sharex=False, sharey=False)
     axes = np.atleast_1d(axes).flatten()
 
     for i, (value, X_2d) in enumerate(tsne_results.items()):
@@ -109,9 +109,10 @@ def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsiz
 
         ax.set_title(f"{hyperparameter} = {value}")
         ax.set_box_aspect(1)
+        ax.set_aspect('equal', adjustable='datalim')
 
-        ax.set_xticks([])
-        ax.set_yticks([])
+        # ax.set_xticks([])
+        # ax.set_yticks([])
         ax.set_xlabel("")
         ax.set_ylabel("")
 
