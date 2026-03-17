@@ -176,6 +176,7 @@ umap_high = umap.UMAP(
     min_dist=0.9, #Svarbus
     metric='euclidean', #Galima keisti
     n_epochs=2000, #Galima keisti
+    n_jobs=4
 )
 umap_high_result = umap_high.fit_transform(X_high)
 X_umap_df = pd.DataFrame(umap_high_result, columns=['UMAP1', 'UMAP2'])
@@ -203,28 +204,65 @@ plt.show()
 
 # %%
 #MDS high
+from sklearn.manifold import MDS
 mds_high = MDS(
 	n_components=2,
-	random_state=80085,
-	metric=True,
-	max_iter=3000,
-	n_init=
-)
+    n_init=20,
+    random_state=80085,
+    init='classical_mds',
+	metric='euclidean',
+	max_iter=4000,
+    n_jobs=-1)
+mds_high_result = mds_high.fit_transform(X_high)
+X_mds_df = pd.DataFrame(mds_high_result, columns=['MDS1', 'MDS2'])
+X_mds_df['string'] = data_high['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_mds_df, x='MDS1', y='MDS2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('MDS Projekcija')
+plt.xlabel('MDS1')
+plt.ylabel('MDS2')
+plt.show()
 
 # %%
 #MDS medium
-
-
-
+from sklearn.manifold import MDS
+mds_medium = MDS(
+	n_components=2,
+    n_init=20,
+    random_state=80085,
+    init='classical_mds',
+	metric='euclidean',
+	max_iter=4000,
+    n_jobs=-1)
+mds_medium_result = mds_medium.fit_transform(X_medium)
+X_mds_df = pd.DataFrame(mds_medium_result, columns=['MDS1', 'MDS2'])
+X_mds_df['string'] = data_medium['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_mds_df, x='MDS1', y='MDS2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('MDS Projekcija')
+plt.xlabel('MDS1')
+plt.ylabel('MDS2')
+plt.show()
 
 # %%
 #MDS low
-
-
-
-
-
-
-
+from sklearn.manifold import MDS
+mds_low = MDS(
+	n_components=2,
+	n_init=20,
+	random_state=80085,
+	init='classical_mds',
+	metric='euclidean',
+	max_iter=4000,
+	n_jobs=-1)
+mds_low_result = mds_low.fit_transform(X_low)
+X_mds_df = pd.DataFrame(mds_low_result, columns=['MDS1', 'MDS2'])
+X_mds_df['string'] = data_low['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_mds_df, x='MDS1', y='MDS2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('MDS Projekcija')	                
 
 
