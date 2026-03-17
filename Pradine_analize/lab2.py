@@ -80,13 +80,10 @@ plt.show()
 
 # %%
 tsne_high = TSNE(
-    n_components=2,
     random_state=80085,
-    # init='pca',
     perplexity=30,
-    metric='euclidean',
     max_iter=20000,
-    learning_rate=100
+    learning_rate='auto'
 )
 tsne_high_result = tsne_high.fit_transform(X_high)
 
@@ -106,44 +103,71 @@ plt.show()
 #TSNE medium
 
 tsne_medium = TSNE(
-    n_components=2,
     random_state=80085,
-    init='pca',
-    perplexity=5,
+    perplexity=12,
     learning_rate='auto',
-    metric='euclidean',
-    max_iter=1000
+    max_iter=2000,
 )
 
 tsne_medium_result = tsne_medium.fit_transform(X_medium)
-plot_tsne_projection(tsne_medium_result, X_medium.to_numpy(), color_col=0, title="t-SNE projekcija (Medium)")
-
+X_pca_df = pd.DataFrame(tsne_medium_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_medium['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('t-SNE Projekcija (Medium)')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.show()
 
 
 # %%
 #TSNE low
 
 tsne_low = TSNE(
-    n_components=2,
     random_state=80085,
-    init='pca',
-    perplexity=5,
+    perplexity=50,
     learning_rate='auto',
-    metric='euclidean',
-    max_iter=1000
+    max_iter=10000
 )
 
 tsne_low_result = tsne_low.fit_transform(X_low)
-plot_tsne_projection(tsne_low_result, X_low.to_numpy(), color_col=0, title="t-SNE projekcija (Low)")
-
+X_pca_df = pd.DataFrame(tsne_low_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_low['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('t-SNE Projekcija (Low)')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.show()
 
 # %%
 #UMAP high
-
+umap_high = umap.UMAP(
+    n_components=2,
+    random_state=80085,
+    n_neighbors=5, #Svarbus, kaitalioti
+    min_dist=0.9, #Svarbus
+    metric='euclidean', #Galima keisti
+    n_epochs=2000, #Galima keisti
+)
+umap_high_result = umap_high.fit_transform(X_high)
+X_umap_df = pd.DataFrame(umap_high_result, columns=['UMAP1', 'UMAP2'])
+X_umap_df['string'] = data_high['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_umap_df, x='UMAP1', y='UMAP2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('UMAP Projekcija (High)')
+plt.xlabel('UMAP1')
+plt.ylabel('UMAP2')
+plt.show()
 
 # %%
 #UMAP medium
 
+
+#%%
 #UMAP low
 
 
@@ -157,6 +181,4 @@ plot_tsne_projection(tsne_low_result, X_low.to_numpy(), color_col=0, title="t-SN
 
 # %%
 #MDS low
-
-
 
