@@ -65,105 +65,156 @@ data_low = result[result['category'] == 'Low'].drop(columns=['category', 'month_
 # %%
 X_high, X_medium, X_low = data_high.drop(columns=['string']).fillna(0), data_medium.drop(columns=['string']).fillna(0), data_low.drop(columns=['string']).fillna(0)
 
+#%%
+def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsize=(14, 8)):
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
 
+    n_plots = len(tsne_results)
+    nrows = (n_plots + ncols - 1) // ncols
 
+    labels = np.array(labels) 
+    unique_labels = sorted(labels, key=lambda x: int(x.split('_')[1]))
+    unique_labels = list(dict.fromkeys(unique_labels))
+    label_names = unique_labels
+
+    palette = sns.color_palette("husl", len(unique_labels))
+    color_map = dict(zip(label_names, palette))
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, constrained_layout=True)
+    axes = np.atleast_1d(axes).flatten()
+
+    for i, (value, X_2d) in enumerate(tsne_results.items()):
+        ax = axes[i]
+
+        df = pd.DataFrame({
+            "Dim1": X_2d[:, 0],
+            "Dim2": X_2d[:, 1],
+            "string": labels  
+        })
+
+        sns.scatterplot(
+            data=df,
+            x="Dim1",
+            y="Dim2",
+            hue="string",
+            palette=color_map,
+            hue_order=label_names,
+            s=30,
+            legend=False,
+            ax=ax
+        )
+
+        ax.set_title(f"{hyperparameter} = {value}")
+        ax.set_box_aspect(1)
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    handles = [
+        plt.Line2D(
+            [0], [0],
+            marker='o',
+            color='w',
+            markerfacecolor=color_map[name],
+            markersize=6,
+            linestyle=''
+        )
+        for name in label_names
+    ]
+
+    fig.legend(
+        handles,
+        label_names,
+        title="Grandinės",
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5)
+    )
+
+    plt.suptitle(title)
+    # plt.tight_layout(rect=[0, 0, 0.9, 1]) 
+    plt.savefig(f"{title.replace(' ', '_')}_{hyperparameter.replace(' ', '_')}.png", dpi=300, bbox_inches='tight')
+    plt.show()
 # %%
-tsne_high = TSNE(
-    n_components=2,
-    random_state=80085,
-    init='pca',
-    perplexity=30,
-    learning_rate='auto',
-    metric='euclidean',
-    max_iter=1000
-)
-tsne_high_result = tsne_high.fit_transform(X_high)
+perplexity_values = [5, 15, 30, 45, 60, 75]
+learning_rate_values = [10, 100, 200, 500, 1000, 1500]
+early_exaggeration_values = [1, 4, 12, 24, 32, 48]
+max_iter_values = [250, 500, 1000, 1500, 2000, 3000]
 
+tsne_perplexity_results = {}
+tsne_learning_rate_results = {}
+tsne_early_exaggeration_results = {}
+tsne_max_iter_results = {}
 
-
-
+#%%
+for perplexity in perplexity_values:
+    tsne_high = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=perplexity,
+        learning_rate='auto',
+        metric='euclidean',
+        max_iter=1000
+    )
+    tsne_perplexity_results[perplexity] = tsne_high.fit_transform(X_high)
 # %%
-X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
-X_pca_df['string'] = data_high['string'].values
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
-plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('t-SNE Projekcija (High)')
-plt.xlabel('PC1')
-plt.ylabel('PC2')
-plt.show()
+plot_tsne_panel(tsne_perplexity_results, title = "t-SNE projekcija", hyperparameter="Perpleksiškumas", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
+#%%
+for learning_rate in learning_rate_values:
+    tsne_high = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=45,
+        learning_rate=learning_rate,
+        metric='euclidean',
+        max_iter=1000
+    )
+    tsne_learning_rate_results[learning_rate] = tsne_high.fit_transform(X_high)
 
+#%%
+plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija", hyperparameter="Mokymosi greitis", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
+#%%
+for early_exaggeration in early_exaggeration_values:
+    tsne_high = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=45,
+        learning_rate='auto',
+        early_exaggeration=early_exaggeration,
+        metric='euclidean',
+        max_iter=1000
+    )
+    tsne_early_exaggeration_results[early_exaggeration] = tsne_high.fit_transform(X_high)
+
+#%%
+plot_tsne_panel(tsne_early_exaggeration_results, title = "t-SNE projekcija", hyperparameter="Early Exaggeration", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 # %%
-tsne_high = TSNE(
-    random_state=80085,
-    perplexity=30,
-    max_iter=20000,
-    learning_rate='auto'
-)
-tsne_high_result = tsne_high.fit_transform(X_high)
-
-
-
-
-# %%
-X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
-X_pca_df['string'] = data_high['string'].values
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
-plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('t-SNE Projekcija (High)')
-plt.xlabel('PC1')
-plt.ylabel('PC2')
-plt.show()
-
-
-
-# %%
-#TSNE medium
-
-tsne_medium = TSNE(
-    random_state=80085,
-    perplexity=12,
-    learning_rate='auto',
-    max_iter=2000,
-)
-
-tsne_medium_result = tsne_medium.fit_transform(X_medium)
-X_pca_df = pd.DataFrame(tsne_medium_result, columns=['PC1', 'PC2'])
-X_pca_df['string'] = data_medium['string'].values
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
-plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('t-SNE Projekcija (Medium)')
-plt.xlabel('PC1')
-plt.ylabel('PC2')
-plt.show()
-
-
-
-
-# %%
-#TSNE low
-
-tsne_low = TSNE(
-    random_state=80085,
-    perplexity=50,
-    learning_rate='auto',
-    max_iter=10000
-)
-
-tsne_low_result = tsne_low.fit_transform(X_low)
-X_pca_df = pd.DataFrame(tsne_low_result, columns=['PC1', 'PC2'])
-X_pca_df['string'] = data_low['string'].values
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
-plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('t-SNE Projekcija (Low)')
-plt.xlabel('PC1')
-plt.ylabel('PC2')
-plt.show()
+for max_iter in max_iter_values:
+    tsne_high = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=45,
+        learning_rate='auto',
+        early_exaggeration=12,
+        metric='euclidean',
+        max_iter=max_iter
+    )
+    tsne_max_iter_results[max_iter] = tsne_high.fit_transform(X_high)
+ #%%
+plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija", hyperparameter="Iteracijų skaičius", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
 
 
