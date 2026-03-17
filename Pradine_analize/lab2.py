@@ -165,27 +165,8 @@ for perplexity in perplexity_values:
         max_iter=1000
     )
     tsne_perplexity_results[perplexity] = tsne_high.fit_transform(X_high)
-# %%
-X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
-X_pca_df['string'] = data_high['string'].values
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
-plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('t-SNE Projekcija (High)')
-plt.xlabel('PC1')
-plt.ylabel('PC2')
-plt.axis('equal')
-plt.show()
 
-# %%
-tsne_high = TSNE(
-    random_state=80085,
-    perplexity=30,
-    max_iter=20000,
-    learning_rate='auto'
-)
-tsne_high_result = tsne_high.fit_transform(X_high)
-plot_tsne_panel(tsne_perplexity_results, title = "t-SNE projekcija", hyperparameter="Perpleksiškumas", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
+plot_tsne_panel(tsne_perplexity_results, title = "t-SNE projekcija skirtingiems perpleksiškumams (aukšta elektros gamyba)", hyperparameter="Perpleksiškumas", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
 #%%
 for learning_rate in learning_rate_values:
@@ -200,66 +181,7 @@ for learning_rate in learning_rate_values:
     )
     tsne_learning_rate_results[learning_rate] = tsne_high.fit_transform(X_high)
 
-
-
-
-# %%
-X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
-X_pca_df['string'] = data_high['string'].values
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
-plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('t-SNE Projekcija (High)')
-plt.xlabel('PC1')
-plt.ylabel('PC2')
-plt.axis('equal')
-plt.show()
-
-# %%
-#TSNE medium
-
-tsne_medium = TSNE(
-    random_state=80085,
-    perplexity=12,
-    learning_rate='auto',
-    max_iter=2000,
-)
-
-tsne_medium_result = tsne_medium.fit_transform(X_medium)
-X_pca_df = pd.DataFrame(tsne_medium_result, columns=['PC1', 'PC2'])
-X_pca_df['string'] = data_medium['string'].values
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
-plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('t-SNE Projekcija (Medium)')
-plt.xlabel('PC1')
-plt.ylabel('PC2')
-plt.axis('equal')
-plt.show()
-
-# %%
-#TSNE low
-
-tsne_low = TSNE(
-    random_state=80085,
-    perplexity=50,
-    learning_rate='auto',
-    max_iter=10000
-)
-
-tsne_low_result = tsne_low.fit_transform(X_low)
-X_pca_df = pd.DataFrame(tsne_low_result, columns=['PC1', 'PC2'])
-X_pca_df['string'] = data_low['string'].values
-plt.figure(figsize=(10, 6))
-sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
-plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('t-SNE Projekcija (Low)')
-plt.xlabel('PC1')
-plt.ylabel('PC2')
-plt.axis('equal')
-plt.show()
-#%%
-plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija", hyperparameter="Mokymosi greitis", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
+plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija skirtingiems mokymosi greičiams (aukšta elektros gamyba)", hyperparameter="Mokymosi greitis", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
 #%%
 for early_exaggeration in early_exaggeration_values:
@@ -275,8 +197,7 @@ for early_exaggeration in early_exaggeration_values:
     )
     tsne_early_exaggeration_results[early_exaggeration] = tsne_high.fit_transform(X_high)
 
-#%%
-plot_tsne_panel(tsne_early_exaggeration_results, title = "t-SNE projekcija", hyperparameter="Early Exaggeration", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
+plot_tsne_panel(tsne_early_exaggeration_results, title = "t-SNE projekcija skirtingiems early exaggeration reikšmėms (aukšta elektros gamyba)", hyperparameter="Early Exaggeration", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 # %%
 for max_iter in max_iter_values:
     tsne_high = TSNE(
@@ -290,11 +211,29 @@ for max_iter in max_iter_values:
         max_iter=max_iter
     )
     tsne_max_iter_results[max_iter] = tsne_high.fit_transform(X_high)
- #%%
-plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija", hyperparameter="Iteracijų skaičius", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
+plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija skirtingiems iteracijų skaičiams (aukšta elektros gamyba)", hyperparameter="Iteracijų skaičius", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
+#%%
+tsne_medium_results = {}
+#%% 
+#TSNE medium
+for perplexity in perplexity_values:
+    tsne_medium = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=perplexity,
+        learning_rate='auto',
+        metric='euclidean',
+        max_iter=1000
+    )
 
+    tsne_medium_results[perplexity] = tsne_medium.fit_transform(X_medium)
+
+plot_tsne_panel(tsne_medium_results, title = "t-SNE projekcija skirtingiems perpleksiškumams (vidutinė elektros gamyba)", hyperparameter="Perpleksiškumas", labels=data_medium['string'].values, ncols=3, figsize=(15, 10))
+#realiai jokio skirtumo galima imti sakykime perplexity = 30
+#%%
 # %%
 #UMAP high
 umap_high = umap.UMAP(
