@@ -166,6 +166,25 @@ for perplexity in perplexity_values:
     )
     tsne_perplexity_results[perplexity] = tsne_high.fit_transform(X_high)
 # %%
+X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_high['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('t-SNE Projekcija (High)')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.axis('equal')
+plt.show()
+
+# %%
+tsne_high = TSNE(
+    random_state=80085,
+    perplexity=30,
+    max_iter=20000,
+    learning_rate='auto'
+)
+tsne_high_result = tsne_high.fit_transform(X_high)
 plot_tsne_panel(tsne_perplexity_results, title = "t-SNE projekcija", hyperparameter="Perpleksiškumas", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
 #%%
@@ -181,6 +200,64 @@ for learning_rate in learning_rate_values:
     )
     tsne_learning_rate_results[learning_rate] = tsne_high.fit_transform(X_high)
 
+
+
+
+# %%
+X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_high['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('t-SNE Projekcija (High)')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.axis('equal')
+plt.show()
+
+# %%
+#TSNE medium
+
+tsne_medium = TSNE(
+    random_state=80085,
+    perplexity=12,
+    learning_rate='auto',
+    max_iter=2000,
+)
+
+tsne_medium_result = tsne_medium.fit_transform(X_medium)
+X_pca_df = pd.DataFrame(tsne_medium_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_medium['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('t-SNE Projekcija (Medium)')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.axis('equal')
+plt.show()
+
+# %%
+#TSNE low
+
+tsne_low = TSNE(
+    random_state=80085,
+    perplexity=50,
+    learning_rate='auto',
+    max_iter=10000
+)
+
+tsne_low_result = tsne_low.fit_transform(X_low)
+X_pca_df = pd.DataFrame(tsne_low_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_low['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('t-SNE Projekcija (Low)')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.axis('equal')
+plt.show()
 #%%
 plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija", hyperparameter="Mokymosi greitis", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
@@ -227,6 +304,7 @@ umap_high = umap.UMAP(
     min_dist=0.9, #Svarbus
     metric='euclidean', #Galima keisti
     n_epochs=2000, #Galima keisti
+    n_jobs=4
 )
 umap_high_result = umap_high.fit_transform(X_high)
 X_umap_df = pd.DataFrame(umap_high_result, columns=['UMAP1', 'UMAP2'])
@@ -237,9 +315,8 @@ plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.title('UMAP Projekcija (High)')
 plt.xlabel('UMAP1')
 plt.ylabel('UMAP2')
+plt.axis('equal')
 plt.show()
-
-
 
 # %%
 #UMAP medium
@@ -254,28 +331,71 @@ plt.show()
 
 # %%
 #MDS high
+from sklearn.manifold import MDS
 mds_high = MDS(
 	n_components=2,
-	random_state=80085,
-	metric=True,
-	max_iter=3000,
-	n_init=
-)
+    n_init=20,
+    random_state=80085,
+    init='classical_mds',
+	metric='euclidean',
+	max_iter=4000,
+    n_jobs=-1)
+mds_high_result = mds_high.fit_transform(X_high)
+X_mds_df = pd.DataFrame(mds_high_result, columns=['MDS1', 'MDS2'])
+X_mds_df['string'] = data_high['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_mds_df, x='MDS1', y='MDS2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('MDS Projekcija')
+plt.xlabel('MDS1')
+plt.ylabel('MDS2')
+plt.axis('equal')
+plt.show()
 
 # %%
 #MDS medium
-
-
-
+from sklearn.manifold import MDS
+mds_medium = MDS(
+	n_components=2,
+    n_init=20,
+    random_state=80085,
+    init='classical_mds',
+	metric='euclidean',
+	max_iter=4000,
+    n_jobs=-1)
+mds_medium_result = mds_medium.fit_transform(X_medium)
+X_mds_df = pd.DataFrame(mds_medium_result, columns=['MDS1', 'MDS2'])
+X_mds_df['string'] = data_medium['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_mds_df, x='MDS1', y='MDS2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('MDS Projekcija')
+plt.xlabel('MDS1')
+plt.ylabel('MDS2')
+plt.axis('equal')
+plt.show()
 
 # %%
 #MDS low
-
-
-
-
-
-
-
+from sklearn.manifold import MDS
+mds_low = MDS(
+	n_components=2,
+	n_init=20,
+	random_state=80085,
+	init='classical_mds',
+	metric='euclidean',
+	max_iter=4000,
+	n_jobs=-1)
+mds_low_result = mds_low.fit_transform(X_low)
+X_mds_df = pd.DataFrame(mds_low_result, columns=['MDS1', 'MDS2'])
+X_mds_df['string'] = data_low['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_mds_df, x='MDS1', y='MDS2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('MDS Projekcija')
+plt.xlabel('MDS1')
+plt.ylabel('MDS2')
+plt.axis('equal')
+plt.show()
 
 
