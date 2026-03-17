@@ -91,9 +91,8 @@ plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.title('t-SNE Projekcija (High)')
 plt.xlabel('PC1')
 plt.ylabel('PC2')
+plt.axis('equal')
 plt.show()
-
-
 
 # %%
 tsne_high = TSNE(
@@ -116,9 +115,8 @@ plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.title('t-SNE Projekcija (High)')
 plt.xlabel('PC1')
 plt.ylabel('PC2')
+plt.axis('equal')
 plt.show()
-
-
 
 # %%
 #TSNE medium
@@ -139,10 +137,8 @@ plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.title('t-SNE Projekcija (Medium)')
 plt.xlabel('PC1')
 plt.ylabel('PC2')
+plt.axis('equal')
 plt.show()
-
-
-
 
 # %%
 #TSNE low
@@ -163,9 +159,8 @@ plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.title('t-SNE Projekcija (Low)')
 plt.xlabel('PC1')
 plt.ylabel('PC2')
+plt.axis('equal')
 plt.show()
-
-
 
 # %%
 #UMAP high
@@ -187,9 +182,8 @@ plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.title('UMAP Projekcija (High)')
 plt.xlabel('UMAP1')
 plt.ylabel('UMAP2')
+plt.axis('equal')
 plt.show()
-
-
 
 # %%
 #UMAP medium
@@ -222,6 +216,7 @@ plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.title('MDS Projekcija')
 plt.xlabel('MDS1')
 plt.ylabel('MDS2')
+plt.axis('equal')
 plt.show()
 
 # %%
@@ -244,6 +239,7 @@ plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.title('MDS Projekcija')
 plt.xlabel('MDS1')
 plt.ylabel('MDS2')
+plt.axis('equal')
 plt.show()
 
 # %%
@@ -263,6 +259,10 @@ X_mds_df['string'] = data_low['string'].values
 plt.figure(figsize=(10, 6))
 sns.scatterplot(data=X_mds_df, x='MDS1', y='MDS2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
 plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
-plt.title('MDS Projekcija')	                
+plt.title('MDS Projekcija')
+plt.xlabel('MDS1')
+plt.ylabel('MDS2')
+plt.axis('equal')
+plt.show()
 
 
