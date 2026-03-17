@@ -1,14 +1,13 @@
 # %%
 import pandas as pd
 import matplotlib.pyplot as plt
-from pandas.plotting import scatter_matrix
 import seaborn as sns
 import matplotlib.dates as mdates
-from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE, MDS
 from sklearn.preprocessing import StandardScaler
 import umap
 import numpy as np
+
 
 # %%
 data = pd.read_csv('INV12.csv')
@@ -22,16 +21,12 @@ data["category"]=data["month_day"].map(mapping["category"])
 data["hour"]=data['Timestamp'].dt.strftime('%H:%M')
 
 data=data.dropna(subset=[f'string_{i}' for i in range(1, 11)])
-
-# Melt to convert string columns into rows
 melted = data.melt(
     id_vars=['month_day', 'hour', 'category'],
     value_vars=[f'string_{i}' for i in range(1, 11)],
     var_name='string',
     value_name='value'
 )
-
-# Pivot with month_day and string as index, hour as columns
 result = melted.pivot_table(
     index=['month_day', 'string', 'category'],
     columns="hour",
@@ -55,13 +50,11 @@ data_high = data_final[data_final['category'] == 'High'].drop(columns=['category
 data_medium = data_final[data_final['category'] == 'Medium'].drop(columns=['category', 'month_day'])
 data_low = data_final[data_final['category'] == 'Low'].drop(columns=['category', 'month_day'])
 
-#%%
-    
+
 # %%
-#mum nereik standartizuot, nes musu duomenys yra toje pacioje skaleje
-#TSNE high
 X_high, X_medium, X_low = data_high.drop(columns=['string']).fillna(0), data_medium.drop(columns=['string']).fillna(0), data_low.drop(columns=['string']).fillna(0)
 
+# %%
 tsne_high = TSNE(
     n_components=2,
     random_state=80085,
@@ -71,10 +64,43 @@ tsne_high = TSNE(
     metric='euclidean',
     max_iter=1000
 )
-
 tsne_high_result = tsne_high.fit_transform(X_high)
 
-plot_projection(tsne_high_result, X_high.to_numpy(), color_col=0, title="t-SNE projekcija (High)")
+
+# %%
+X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_high['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('t-SNE Projekcija (High)')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.show()
+
+# %%
+tsne_high = TSNE(
+    n_components=2,
+    random_state=80085,
+    # init='pca',
+    perplexity=30,
+    metric='euclidean',
+    max_iter=20000,
+    learning_rate=100
+)
+tsne_high_result = tsne_high.fit_transform(X_high)
+
+
+# %%
+X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_high['string'].values
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=X_pca_df, x='PC1', y='PC2', hue='string', palette='husl', s=75, hue_order=[f'string_{i}' for i in range(1, 11)])
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.title('t-SNE Projekcija (High)')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.show()
 
 # %%
 #TSNE medium
@@ -93,7 +119,8 @@ tsne_medium_result = tsne_medium.fit_transform(X_medium)
 plot_tsne_projection(tsne_medium_result, X_medium.to_numpy(), color_col=0, title="t-SNE projekcija (Medium)")
 
 
-#%%
+
+# %%
 #TSNE low
 
 tsne_low = TSNE(
@@ -109,19 +136,27 @@ tsne_low = TSNE(
 tsne_low_result = tsne_low.fit_transform(X_low)
 plot_tsne_projection(tsne_low_result, X_low.to_numpy(), color_col=0, title="t-SNE projekcija (Low)")
 
-#%%
+
+# %%
 #UMAP high
 
-#%%
+
+# %%
 #UMAP medium
 
 #UMAP low
 
-#%%
+
+# %%
 #MDS high
 
-#%%
+
+# %%
 #MDS medium
 
-#%%
+
+# %%
 #MDS low
+
+
+
