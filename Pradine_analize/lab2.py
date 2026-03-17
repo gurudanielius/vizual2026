@@ -18,8 +18,19 @@ mapping=data.groupby(data["month_day"]).sum(numeric_only=True)
 mapping["sum"]=mapping.sum(axis=1)
 mapping["category"]=np.where(mapping["sum"] > mapping["sum"].quantile(0.75), "High",np.where(mapping["sum"] < mapping["sum"].quantile(0.25), "Low", "Medium"))
 data["category"]=data["month_day"].map(mapping["category"])
-data["hour"]=data['Timestamp'].dt.strftime('%H:%M')
 
+
+
+# %%
+string_cols = [f'string_{i}' for i in range(1, 11)]
+data_minmax_by_category = data.groupby('category')[string_cols].transform(lambda x: (x - x.min()) / (x.max() - x.min()))
+data[string_cols] = data_minmax_by_category
+
+
+
+# %%
+
+data["hour"]=data['Timestamp'].dt.strftime('%H:%M')
 data=data.dropna(subset=[f'string_{i}' for i in range(1, 11)])
 melted = data.melt(
     id_vars=['month_day', 'hour', 'category'],
@@ -33,7 +44,6 @@ result = melted.pivot_table(
     values='value',
     aggfunc='sum'
 )
-
 result["month_day"] = result.index.get_level_values('month_day')
 result["string"] = result.index.get_level_values('string')
 result["category"] = result.index.get_level_values('category')
@@ -44,15 +54,18 @@ cols = ['month_day', 'string', 'category'] + [col for col in cols if col not in 
 result = result[cols]
 result=result.sort_values(by=['month_day', 'string']).reset_index(drop=True)
 result.index.name = 'id'
-data_final=result
 
-data_high = data_final[data_final['category'] == 'High'].drop(columns=['category', 'month_day'])
-data_medium = data_final[data_final['category'] == 'Medium'].drop(columns=['category', 'month_day'])
-data_low = data_final[data_final['category'] == 'Low'].drop(columns=['category', 'month_day'])
+
+# %%
+data_high = result[result['category'] == 'High'].drop(columns=['category', 'month_day'])
+data_medium = result[result['category'] == 'Medium'].drop(columns=['category', 'month_day'])
+data_low = result[result['category'] == 'Low'].drop(columns=['category', 'month_day'])
 
 
 # %%
 X_high, X_medium, X_low = data_high.drop(columns=['string']).fillna(0), data_medium.drop(columns=['string']).fillna(0), data_low.drop(columns=['string']).fillna(0)
+
+
 
 # %%
 tsne_high = TSNE(
@@ -67,6 +80,8 @@ tsne_high = TSNE(
 tsne_high_result = tsne_high.fit_transform(X_high)
 
 
+
+
 # %%
 X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
 X_pca_df['string'] = data_high['string'].values
@@ -77,6 +92,8 @@ plt.title('t-SNE Projekcija (High)')
 plt.xlabel('PC1')
 plt.ylabel('PC2')
 plt.show()
+
+
 
 # %%
 tsne_high = TSNE(
@@ -88,6 +105,8 @@ tsne_high = TSNE(
 tsne_high_result = tsne_high.fit_transform(X_high)
 
 
+
+
 # %%
 X_pca_df = pd.DataFrame(tsne_high_result, columns=['PC1', 'PC2'])
 X_pca_df['string'] = data_high['string'].values
@@ -98,6 +117,8 @@ plt.title('t-SNE Projekcija (High)')
 plt.xlabel('PC1')
 plt.ylabel('PC2')
 plt.show()
+
+
 
 # %%
 #TSNE medium
@@ -121,6 +142,8 @@ plt.ylabel('PC2')
 plt.show()
 
 
+
+
 # %%
 #TSNE low
 
@@ -141,6 +164,8 @@ plt.title('t-SNE Projekcija (Low)')
 plt.xlabel('PC1')
 plt.ylabel('PC2')
 plt.show()
+
+
 
 # %%
 #UMAP high
@@ -163,22 +188,43 @@ plt.xlabel('UMAP1')
 plt.ylabel('UMAP2')
 plt.show()
 
+
+
 # %%
 #UMAP medium
 
 
-#%%
+
+# %%
 #UMAP low
+
+
 
 
 # %%
 #MDS high
-
+mds_high = MDS(
+	n_components=2,
+	random_state=80085,
+	metric=True,
+	max_iter=3000,
+	n_init=
+)
 
 # %%
 #MDS medium
 
 
+
+
 # %%
 #MDS low
+
+
+
+
+
+
+
+
 
