@@ -5,6 +5,7 @@ import seaborn as sns
 from sklearn.manifold import TSNE, MDS
 import umap
 import numpy as np
+from sklearn.decomposition import PCA
 
 # %%
 data = pd.read_csv('INV12.csv')
@@ -553,7 +554,48 @@ plt.show()
 
 # %%
 #UMAP low
+umap_model = umap.UMAP(
+    n_components=2,
+    random_state=80085,
+    init='random',
+    n_neighbors=15,
+    min_dist=0.9,
+    metric='euclidean'
+)
 
+umap_result = umap_model.fit_transform(X_low)
+
+X_umap_df = pd.DataFrame(umap_result, columns=['UMAP1', 'UMAP2'])
+X_umap_df['string'] = data_low['string'].values
+
+plt.figure(figsize=(10, 7))
+
+lims = [
+    min(np.floor(X_umap_df['UMAP1'].min()), np.floor(X_umap_df['UMAP2'].min()))-1,
+    max(np.ceil(X_umap_df['UMAP1'].max()), np.ceil(X_umap_df['UMAP2'].max()))+1
+]
+
+plt.xlim(lims)
+plt.ylim(lims)
+plt.gca().set_aspect('equal', adjustable='box')
+
+sns.scatterplot(
+    data=X_umap_df,
+    x='UMAP1',
+    y='UMAP2',
+    hue='string',
+    palette='husl',
+    s=75,
+    hue_order=[f'string_{j}' for j in range(1, 11)]
+)
+
+plt.title('UMAP projekcija (n_neighbors=12, min_dist=0.8)')
+plt.xlabel('UMAP1')
+plt.ylabel('UMAP2')
+
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
 
 
 
@@ -795,4 +837,114 @@ import sklearn
 from sklearn.manifold import MDS
 print(sklearn.__version__)
 
+# %%
+# %%
+# PCA high
+pca_model = PCA(n_components=2, random_state=80085)
+pca_result = pca_model.fit_transform(X_high)
+
+X_pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_high['string'].values
+
+plt.figure(figsize=(10, 7))
+
+lims = [
+    min(np.floor(X_pca_df['PC1'].min()), np.floor(X_pca_df['PC2'].min())) - 1,
+    max(np.ceil(X_pca_df['PC1'].max()), np.ceil(X_pca_df['PC2'].max())) + 1
+]
+
+plt.xlim(lims)
+plt.ylim(lims)
+plt.gca().set_aspect('equal', adjustable='box')
+
+sns.scatterplot(
+    data=X_pca_df,
+    x='PC1',
+    y='PC2',
+    hue='string',
+    palette='husl',
+    s=75,
+    hue_order=[f'string_{j}' for j in range(1, 11)]
+)
+
+plt.title('PCA projekcija didelės generacijos duomenų imčiai')
+plt.xlabel(f'PC1 ({pca_model.explained_variance_ratio_[0]*100:.2f}%)')
+plt.ylabel(f'PC2 ({pca_model.explained_variance_ratio_[1]*100:.2f}%)')
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
+# %%
+# PCA medium
+pca_model = PCA(n_components=2, random_state=80085)
+pca_result = pca_model.fit_transform(X_medium)
+
+X_pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_medium['string'].values
+
+plt.figure(figsize=(10, 7))
+
+lims = [
+    min(np.floor(X_pca_df['PC1'].min()), np.floor(X_pca_df['PC2'].min())) - 1,
+    max(np.ceil(X_pca_df['PC1'].max()), np.ceil(X_pca_df['PC2'].max())) + 1
+]
+
+plt.xlim(lims)
+plt.ylim(lims)
+plt.gca().set_aspect('equal', adjustable='box')
+
+sns.scatterplot(
+    data=X_pca_df,
+    x='PC1',
+    y='PC2',
+    hue='string',
+    palette='husl',
+    s=75,
+    hue_order=[f'string_{j}' for j in range(1, 11)]
+)
+
+plt.title('PCA projekcija vidutinės generacijos duomenų imčiai')
+plt.xlabel(f'PC1 ({pca_model.explained_variance_ratio_[0]*100:.2f}%)')
+plt.ylabel(f'PC2 ({pca_model.explained_variance_ratio_[1]*100:.2f}%)')
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
+# %%
+# PCA low
+pca_model = PCA(n_components=2, random_state=80085)
+pca_result = pca_model.fit_transform(X_low)
+
+X_pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
+X_pca_df['string'] = data_low['string'].values
+
+plt.figure(figsize=(10, 7))
+
+lims = [
+    min(np.floor(X_pca_df['PC1'].min()), np.floor(X_pca_df['PC2'].min())) - 1,
+    max(np.ceil(X_pca_df['PC1'].max()), np.ceil(X_pca_df['PC2'].max())) + 1
+]
+
+plt.xlim(lims)
+plt.ylim(lims)
+plt.gca().set_aspect('equal', adjustable='box')
+
+sns.scatterplot(
+    data=X_pca_df,
+    x='PC1',
+    y='PC2',
+    hue='string',
+    palette='husl',
+    s=75,
+    hue_order=[f'string_{j}' for j in range(1, 11)]
+)
+
+plt.title('PCA projekcija mažos generacijos duomenų imčiai')
+plt.xlabel(f'PC1 ({pca_model.explained_variance_ratio_[0]*100:.2f}%)')
+plt.ylabel(f'PC2 ({pca_model.explained_variance_ratio_[1]*100:.2f}%)')
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
 # %%
