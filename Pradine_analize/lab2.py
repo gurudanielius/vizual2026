@@ -137,7 +137,7 @@ def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsiz
 
 # %%
 perplexity_values = [5, 15, 30, 45, 60, 75]
-learning_rate_values = [10, 100, 200, 500, 1000, 1500]
+learning_rate_values = [10, 100, 200, 500, 750, 1000]
 early_exaggeration_values = [1, 4, 12, 24, 32, 48]
 max_iter_values = [250, 500, 1000, 1500, 2000, 3000]
 
@@ -213,7 +213,7 @@ tsne_high_final = TSNE(
     random_state=80085,
     init='pca',
     perplexity=45,
-    learning_rate=1000,
+    learning_rate=200,
     early_exaggeration=12,
     metric='euclidean',
     max_iter=1000
@@ -249,8 +249,13 @@ sns.scatterplot(
     ax=ax
 )
 
-ax.set_box_aspect(1)
-ax.set_aspect('equal', adjustable='datalim')
+lims = [
+            min(np.floor(df['Dim1'].min()), np.floor(df['Dim2'].min())) - 1,
+            max(np.ceil(df['Dim1'].max()), np.ceil(df['Dim2'].max())) + 1
+        ]
+ax.set_xlim(lims)
+ax.set_ylim(lims)
+ax.set_aspect('equal', adjustable='box')
 ax.set_xlabel("")
 ax.set_ylabel("")
 
@@ -343,7 +348,7 @@ tsne_medium_final = TSNE(
     random_state=80085,
     init='pca',
     perplexity=30,
-    learning_rate=1000,
+    learning_rate=200,
     early_exaggeration=12,
     metric='euclidean',
     max_iter=1000
@@ -379,8 +384,13 @@ sns.scatterplot(
     ax=ax
 )
 
-ax.set_box_aspect(1)
-ax.set_aspect('equal', adjustable='datalim')
+lims = [
+            min(np.floor(df['Dim1'].min()), np.floor(df['Dim2'].min())) - 5,
+            max(np.ceil(df['Dim1'].max()), np.ceil(df['Dim2'].max())) + 5
+        ]
+ax.set_xlim(lims)
+ax.set_ylim(lims)
+ax.set_aspect('equal', adjustable='box')
 ax.set_xlabel("")
 ax.set_ylabel("")
 
@@ -389,8 +399,8 @@ handles = [
                markerfacecolor=color_map[name], markersize=6, linestyle='')
     for name in unique_labels
 ]
-ax.legend(handles, unique_labels, title="Grandinės",
-          loc="center left", bbox_to_anchor=(1.02, 0.5))
+# ax.legend(handles, unique_labels, title="Grandinės",
+#           loc="center left", bbox_to_anchor=(1.02, 0.5))
 
 plt.suptitle("t-SNE projekcija (vidutinė elektros energijos gamyba)")
 plt.savefig(f"t-SNE projekcija (vidutinė elektros energijos gamyba).png", dpi=300, bbox_inches='tight')
@@ -504,8 +514,13 @@ sns.scatterplot(
     ax=ax
 )
 
-ax.set_box_aspect(1)
-ax.set_aspect('equal', adjustable='datalim')
+lims = [
+            min(np.floor(df['Dim1'].min()), np.floor(df['Dim2'].min())) - 1,
+            max(np.ceil(df['Dim1'].max()), np.ceil(df['Dim2'].max())) + 1
+        ]
+ax.set_xlim(lims)
+ax.set_ylim(lims)
+ax.set_aspect('equal', adjustable='box')
 ax.set_xlabel("")
 ax.set_ylabel("")
 
@@ -514,8 +529,10 @@ handles = [
                markerfacecolor=color_map[name], markersize=6, linestyle='')
     for name in unique_labels
 ]
-ax.legend(handles, unique_labels, title="Grandinės",
-          loc="center left", bbox_to_anchor=(1.02, 0.5))
+# ax.legend(handles, unique_labels, title="Grandinės",
+#           loc="center right", bbox_to_anchor=(1.02, 0.5))
+
+# fig.legends[0].remove()
 
 plt.suptitle("t-SNE projekcija (žema elektros energijos gamyba)")
 plt.savefig(f"t-SNE projekcija (žema elektros energijos gamyba).png", dpi=300, bbox_inches='tight')
@@ -577,7 +594,7 @@ for i, nn in enumerate(n_neighbors_values):
         'n_neighbors': nn
     })
 
-fig.legend(handles, labels, title='Grandinės', loc='right')
+fig.legend(handles, labels, title='Grandinės', loc='right',)
 fig.suptitle('UMAP Projekcija. Skirtingos n_neighbors reikšmės', fontsize=20)
 plt.show()
 
