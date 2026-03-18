@@ -206,6 +206,64 @@ for max_iter in max_iter_values:
 plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija skirtingiems iteracijų skaičiams (aukšta elektros gamyba)", hyperparameter="Iteracijų skaičius", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
 
 #%%
+tsne_high_final = TSNE(
+    n_components=2,
+    random_state=80085,
+    init='pca',
+    perplexity=45,
+    learning_rate=1000,
+    early_exaggeration=12,
+    metric='euclidean',
+    max_iter=1000
+)
+
+tsne_high_final_result = tsne_high_final.fit_transform(X_high)
+
+#%%
+labels=data_high['string'].values
+labels = np.array(labels)
+unique_labels = sorted(set(labels), key=lambda x: int(x.split('_')[1]))
+
+palette = sns.color_palette("husl", len(unique_labels))
+color_map = dict(zip(unique_labels, palette))
+
+df = pd.DataFrame({
+    "Dim1": tsne_high_final_result[:, 0],
+    "Dim2": tsne_high_final_result[:, 1],
+    "string": labels
+})
+
+fig, ax = plt.subplots(figsize=(7, 6))
+
+sns.scatterplot(
+    data=df,
+    x="Dim1",
+    y="Dim2",
+    hue="string",
+    palette=color_map,
+    hue_order=unique_labels,
+    s=30,
+    legend=False,
+    ax=ax
+)
+
+ax.set_box_aspect(1)
+ax.set_aspect('equal', adjustable='datalim')
+ax.set_xlabel("")
+ax.set_ylabel("")
+
+handles = [
+    plt.Line2D([0], [0], marker='o', color='w',
+               markerfacecolor=color_map[name], markersize=6, linestyle='')
+    for name in unique_labels
+]
+ax.legend(handles, unique_labels, title="Grandinės",
+          loc="center left", bbox_to_anchor=(1.02, 0.5))
+
+plt.suptitle("t-SNE projekcija (aukšta elektros energijos gamyba)")
+plt.savefig(f"t-SNE projekcija (aukšta elektros energijos gamyba).png", dpi=300, bbox_inches='tight')
+plt.show()
+#%%
 tsne_medium_results = {}
 #%% 
 #TSNE medium
@@ -335,6 +393,132 @@ ax.legend(handles, unique_labels, title="Grandinės",
 plt.suptitle("t-SNE projekcija (vidutinė elektros energijos gamyba)")
 plt.savefig(f"t-SNE projekcija (vidutinė elektros energijos gamyba).png", dpi=300, bbox_inches='tight')
 plt.show()
+
+#%%
+#tsne low
+tsne_low_results = {}
+for perplexity in perplexity_values:
+    tsne_low = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=perplexity,
+        learning_rate='auto',
+        metric='euclidean',
+        max_iter=1000
+    )
+    tsne_low_results[perplexity] = tsne_low.fit_transform(X_low)
+
+plot_tsne_panel(tsne_low_results, title = "t-SNE projekcija skirtingiems perpleksiškumams (maža elektros gamyba)", hyperparameter="Perpleksiškumas", labels=data_low['string'].values, ncols=3, figsize=(15, 10))
+#nelabai yra skirtumu, galime imti 30
+#%%
+for learning_rate in learning_rate_values:
+    tsne_low = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=30,
+        learning_rate=learning_rate,
+        metric='euclidean',
+        max_iter=1000
+    )
+    tsne_learning_rate_results[learning_rate] = tsne_low.fit_transform(X_low)
+
+plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija skirtingiems mokymosi greičiams (maža elektros gamyba)", hyperparameter="Mokymosi greitis", labels=data_low['string'].values, ncols=3, figsize=(15, 10))
+#cia jau matom skirtumus, tai galim imti 500, nes 100 jau atrodo truputeli per didelis
+
+#%%
+for early_exaggeration in early_exaggeration_values:
+    tsne_low = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=30,
+        learning_rate=500,
+        early_exaggeration=early_exaggeration,
+        metric='euclidean',
+        max_iter=1000
+    )
+    tsne_early_exaggeration_results[early_exaggeration] = tsne_low.fit_transform(X_low)
+
+plot_tsne_panel(tsne_early_exaggeration_results, title = "t-SNE projekcija skirtingiems early exaggeration reikšmėms (maža elektros gamyba)", hyperparameter="Early Exaggeration", labels=data_low['string'].values, ncols=3, figsize=(15, 10))
+#realiai nelabai matom skirtumus, tai galim imti 24
+
+#%%
+for max_iter in max_iter_values:
+    tsne_low = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=30,
+        learning_rate=500,
+        early_exaggeration=24,
+        metric='euclidean',
+        max_iter=max_iter
+    )
+    tsne_max_iter_results[max_iter] = tsne_low.fit_transform(X_low)
+
+plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija skirtingiems iteracijų skaičiams (maža elektros gamyba)", hyperparameter="Iteracijų skaičius", labels=data_low['string'].values, ncols=3, figsize=(15, 10))
+
+#velgi nesvarbu, po 1000 iteraciju grafikai identiski
+
+#%%
+tsne_low_final = TSNE(
+    n_components=2,
+    random_state=80085,
+    init='pca',
+    perplexity=30,
+    learning_rate=500,
+    early_exaggeration=24,
+    metric='euclidean',
+    max_iter=1000
+)
+tsne_low_final_result = tsne_low_final.fit_transform(X_low)
+
+labels=data_low['string'].values
+labels = np.array(labels)
+unique_labels = sorted(set(labels), key=lambda x: int(x.split('_')[1]))
+
+palette = sns.color_palette("husl", len(unique_labels))
+color_map = dict(zip(unique_labels, palette))
+
+df = pd.DataFrame({
+    "Dim1": tsne_low_final_result[:, 0],
+    "Dim2": tsne_low_final_result[:, 1],
+    "string": labels
+})
+
+fig, ax = plt.subplots(figsize=(7, 6))
+
+sns.scatterplot(
+    data=df,
+    x="Dim1",
+    y="Dim2",
+    hue="string",
+    palette=color_map,
+    hue_order=unique_labels,
+    s=30,
+    legend=False,
+    ax=ax
+)
+
+ax.set_box_aspect(1)
+ax.set_aspect('equal', adjustable='datalim')
+ax.set_xlabel("")
+ax.set_ylabel("")
+
+handles = [
+    plt.Line2D([0], [0], marker='o', color='w',
+               markerfacecolor=color_map[name], markersize=6, linestyle='')
+    for name in unique_labels
+]
+ax.legend(handles, unique_labels, title="Grandinės",
+          loc="center left", bbox_to_anchor=(1.02, 0.5))
+
+plt.suptitle("t-SNE projekcija (žema elektros energijos gamyba)")
+plt.savefig(f"t-SNE projekcija (žema elektros energijos gamyba).png", dpi=300, bbox_inches='tight')
+plt.show()
+
 #%%
 #UMAP high n_neighbors palyginimas
 n_neighbors_values = [2, 10, 15, 30, 40, 50]
