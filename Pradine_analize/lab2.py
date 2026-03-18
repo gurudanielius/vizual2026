@@ -84,6 +84,14 @@ def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsiz
             "string": labels  
         })
 
+        lims = [
+            min(np.floor(df['Dim1'].min()), np.floor(df['Dim2'].min())) - 5,
+            max(np.ceil(df['Dim1'].max()), np.ceil(df['Dim2'].max())) + 5
+        ]
+        ax.set_xlim(lims)
+        ax.set_ylim(lims)
+        ax.set_aspect('equal', adjustable='box')
+
         sns.scatterplot(
             data=df,
             x="Dim1",
@@ -97,11 +105,6 @@ def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsiz
         )
 
         ax.set_title(f"{hyperparameter} = {value}")
-        ax.set_box_aspect(1)
-        ax.set_aspect('equal', adjustable='datalim')
-
-        # ax.set_xticks([])
-        # ax.set_yticks([])
         ax.set_xlabel("")
         ax.set_ylabel("")
 
@@ -129,7 +132,6 @@ def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsiz
     )
 
     plt.suptitle(title)
-    # plt.tight_layout(rect=[0, 0, 0.9, 1]) 
     plt.savefig(f"{title.replace(' ', '_')}_{hyperparameter.replace(' ', '_')}.png", dpi=300, bbox_inches='tight')
     plt.show()
 
