@@ -1,3 +1,4 @@
+#%%
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -56,11 +57,13 @@ result = result.sort_values(by=['month_day', 'string']).reset_index(drop=True)
 result.index.name = 'id'
 
 # Padalinimas pagal kategorijas
+
 data_high = result[result['category'] == 'High'].drop(columns=['category', 'month_day'])
 data_medium = result[result['category'] == 'Medium'].drop(columns=['category', 'month_day'])
 data_low = result[result['category'] == 'Low'].drop(columns=['category', 'month_day'])
-
+#%%
 # Aprašomoji statistika
+string_order = [f'string_{i}' for i in range(1, 11)]
 data_high_long = data_high.melt(
     id_vars='string',
     var_name='hour',
@@ -72,8 +75,9 @@ data_high_final = data_high_long.pivot_table(
     values='value',
     aggfunc='mean'
 ).reset_index()
-print(data_high_final.describe())
-
+data_high_final = data_high_final[string_order]
+data_high_final.describe()
+#%%
 data_medium_long = data_medium.melt(
     id_vars='string',
     var_name='hour',
@@ -85,8 +89,9 @@ data_medium_final = data_medium_long.pivot_table(
     values='value',
     aggfunc='mean'
 ).reset_index()
-print(data_medium_final.describe())
-
+data_medium_final = data_medium_final[string_order]
+data_medium_final.describe()
+#%%
 data_low_long = data_low.melt(
     id_vars='string',
     var_name='hour',
@@ -98,8 +103,9 @@ data_low_final = data_low_long.pivot_table(
     values='value',
     aggfunc='mean'
 ).reset_index()
-print(data_low_final.describe())
-
+data_low_final = data_low_final[string_order]
+data_low_final.describe()
+#%%
 # Heatmap
 rename_strings = {f'string_{i}': f'Grandinė {i}' for i in range(1, 11)}
 string_order = [f'string_{i}' for i in range(1, 11)]
@@ -134,6 +140,7 @@ def plot_heatmap(data, title):
     plt.tight_layout()
     plt.show()
 
-plot_heatmap(heatmap_high, 'Aukštos generacijos dienos')
+plot_heatmap(heatmap_high, 'Didelės generacijos dienos')
 plot_heatmap(heatmap_medium, 'Vidutinės generacijos dienos')
-plot_heatmap(heatmap_low, 'Žemos generacijos dienos')
+plot_heatmap(heatmap_low, 'Mažos generacijos dienos')
+# %%
