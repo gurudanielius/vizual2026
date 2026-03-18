@@ -2,9 +2,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import matplotlib.dates as mdates
 from sklearn.manifold import TSNE, MDS
-from sklearn.preprocessing import StandardScaler
 import umap
 import numpy as np
 
@@ -587,6 +585,8 @@ plt.show()
 
 
 # %%
+import sklearn
+from sklearn.manifold import MDS
+print(sklearn.__version__)
 
-
-
+# %%
