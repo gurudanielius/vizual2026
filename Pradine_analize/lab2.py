@@ -6,86 +6,6 @@ from sklearn.manifold import TSNE, MDS
 import umap
 import numpy as np
 
-
-
-# %%
-def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsize=(14, 8)):
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-
-    n_plots = len(tsne_results)
-    nrows = (n_plots + ncols - 1) // ncols
-
-    labels = np.array(labels) 
-    unique_labels = sorted(labels, key=lambda x: int(x.split('_')[1]))
-    unique_labels = list(dict.fromkeys(unique_labels))
-    label_names = unique_labels
-
-    palette = sns.color_palette("husl", len(unique_labels))
-    color_map = dict(zip(label_names, palette))
-
-    fig, axes = plt.subplots(nrows, ncols, figsize=figsize, constrained_layout=True)
-    axes = np.atleast_1d(axes).flatten()
-
-    for i, (value, X_2d) in enumerate(tsne_results.items()):
-        ax = axes[i]
-
-        df = pd.DataFrame({
-            "Dim1": X_2d[:, 0],
-            "Dim2": X_2d[:, 1],
-            "string": labels  
-        })
-
-        sns.scatterplot(
-            data=df,
-            x="Dim1",
-            y="Dim2",
-            hue="string",
-            palette=color_map,
-            hue_order=label_names,
-            s=30,
-            legend=False,
-            ax=ax
-        )
-
-        ax.set_title(f"{hyperparameter} = {value}")
-        ax.set_box_aspect(1)
-
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_xlabel("")
-        ax.set_ylabel("")
-
-    for j in range(i + 1, len(axes)):
-        fig.delaxes(axes[j])
-
-    handles = [
-        plt.Line2D(
-            [0], [0],
-            marker='o',
-            color='w',
-            markerfacecolor=color_map[name],
-            markersize=6,
-            linestyle=''
-        )
-        for name in label_names
-    ]
-
-    fig.legend(
-        handles,
-        label_names,
-        title="Grandinės",
-        loc="center left",
-        bbox_to_anchor=(1.02, 0.5)
-    )
-
-    plt.suptitle(title)
-    # plt.tight_layout(rect=[0, 0, 0.9, 1]) 
-    plt.savefig(f"{title.replace(' ', '_')}_{hyperparameter.replace(' ', '_')}.png", dpi=300, bbox_inches='tight')
-    plt.show()
-
 # %%
 data = pd.read_csv('INV12.csv')
 data.columns = ['Timestamp'] + [f'string_{i}' for i in range(1, 11)] 
@@ -101,11 +21,7 @@ data["category"]=data["month_day"].map(mapping["category"])
 string_cols = [f'string_{i}' for i in range(1, 11)]
 data_minmax_by_category = data.groupby('category')[string_cols].transform(lambda x: (x - x.min()) / (x.max() - x.min()))
 data[string_cols] = data_minmax_by_category
-
-
-
-
-# %%
+#%%
 
 data["hour"]=data['Timestamp'].dt.strftime('%H:%M')
 data=data.dropna(subset=[f'string_{i}' for i in range(1, 11)])
@@ -144,10 +60,6 @@ X_high, X_medium, X_low = data_high.drop(columns=['string']).fillna(0), data_med
 
 #%%
 def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsize=(14, 8)):
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import seaborn as sns
 
     n_plots = len(tsne_results)
     nrows = (n_plots + ncols - 1) // ncols
@@ -220,6 +132,7 @@ def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsiz
     # plt.tight_layout(rect=[0, 0, 0.9, 1]) 
     plt.savefig(f"{title.replace(' ', '_')}_{hyperparameter.replace(' ', '_')}.png", dpi=300, bbox_inches='tight')
     plt.show()
+
 # %%
 perplexity_values = [5, 15, 30, 45, 60, 75]
 learning_rate_values = [10, 100, 200, 500, 1000, 1500]
@@ -312,6 +225,116 @@ for perplexity in perplexity_values:
 plot_tsne_panel(tsne_medium_results, title = "t-SNE projekcija skirtingiems perpleksiškumams (vidutinė elektros gamyba)", hyperparameter="Perpleksiškumas", labels=data_medium['string'].values, ncols=3, figsize=(15, 10))
 #realiai jokio skirtumo galima imti sakykime perplexity = 30
 
+#%%
+for learning_rate in learning_rate_values:
+    tsne_medium = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=30,
+        learning_rate=learning_rate,
+        metric='euclidean',
+        max_iter=1000
+    )
+    tsne_learning_rate_results[learning_rate] = tsne_medium.fit_transform(X_medium)
+
+plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija skirtingiems mokymosi greičiams (vidutinė elektros gamyba)", hyperparameter="Mokymosi greitis", labels=data_medium['string'].values, ncols=3, figsize=(15, 10))
+
+#galima imti 1000, nes jau su 1500 atrodo, kad persimoko
+
+#%%
+for early_exaggeration in early_exaggeration_values:
+    tsne_medium = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=30,
+        learning_rate='auto',
+        early_exaggeration=early_exaggeration,
+        metric='euclidean',
+        max_iter=1000
+    )
+    tsne_early_exaggeration_results[early_exaggeration] = tsne_medium.fit_transform(X_medium)
+
+plot_tsne_panel(tsne_early_exaggeration_results, title = "t-SNE projekcija skirtingiems early exaggeration reikšmėms (vidutinė elektros gamyba)", hyperparameter="Early Exaggeration", labels=data_medium['string'].values, ncols=3, figsize=(15, 10))
+
+#cia tas early exaggeration irgi nelabai skirias, tai galim imti 12 sakykime
+
+#%%
+for max_iter in max_iter_values:
+    tsne_medium = TSNE(
+        n_components=2,
+        random_state=80085,
+        init='pca',
+        perplexity=30,
+        learning_rate='auto',
+        early_exaggeration=12,
+        metric='euclidean',
+        max_iter=max_iter
+    )
+    tsne_max_iter_results[max_iter] = tsne_medium.fit_transform(X_medium)
+
+plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija skirtingiems iteracijų skaičiams (vidutinė elektros gamyba)", hyperparameter="Iteracijų skaičius", labels=data_medium['string'].values, ncols=3, figsize=(15, 10))
+
+#%%
+#galutiniai t-SNE medium, perplexity 30, learning_rate 1000, ee 12, max_iter 1000
+tsne_medium_final = TSNE(
+    n_components=2,
+    random_state=80085,
+    init='pca',
+    perplexity=30,
+    learning_rate=1000,
+    early_exaggeration=12,
+    metric='euclidean',
+    max_iter=1000
+)
+
+tsne_medium_final_result = tsne_medium_final.fit_transform(X_medium)
+
+#%%
+labels=data_medium['string'].values
+labels = np.array(labels)
+unique_labels = sorted(set(labels), key=lambda x: int(x.split('_')[1]))
+
+palette = sns.color_palette("husl", len(unique_labels))
+color_map = dict(zip(unique_labels, palette))
+
+df = pd.DataFrame({
+    "Dim1": tsne_medium_final_result[:, 0],
+    "Dim2": tsne_medium_final_result[:, 1],
+    "string": labels
+})
+
+fig, ax = plt.subplots(figsize=(7, 6))
+
+sns.scatterplot(
+    data=df,
+    x="Dim1",
+    y="Dim2",
+    hue="string",
+    palette=color_map,
+    hue_order=unique_labels,
+    s=30,
+    legend=False,
+    ax=ax
+)
+
+ax.set_box_aspect(1)
+ax.set_aspect('equal', adjustable='datalim')
+ax.set_xlabel("")
+ax.set_ylabel("")
+
+handles = [
+    plt.Line2D([0], [0], marker='o', color='w',
+               markerfacecolor=color_map[name], markersize=6, linestyle='')
+    for name in unique_labels
+]
+ax.legend(handles, unique_labels, title="Grandinės",
+          loc="center left", bbox_to_anchor=(1.02, 0.5))
+
+plt.suptitle("t-SNE projekcija (vidutinė elektros energijos gamyba)")
+plt.savefig(f"t-SNE projekcija (vidutinė elektros energijos gamyba).png", dpi=300, bbox_inches='tight')
+plt.show()
 #%%
 #UMAP high n_neighbors palyginimas
 n_neighbors_values = [2, 10, 15, 30, 40, 50]
