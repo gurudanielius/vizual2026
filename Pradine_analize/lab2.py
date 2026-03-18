@@ -314,7 +314,7 @@ plot_tsne_panel(tsne_medium_results, title = "t-SNE projekcija skirtingiems perp
 
 #%%
 #UMAP high n_neighbors palyginimas
-n_neighbors_values = [2, 5, 10, 20, 50, 100]
+n_neighbors_values = [2, 10, 15, 30, 40, 50]
 fig, axes = plt.subplots(2, 3, figsize=(18, 12))
 axes = axes.ravel()
 
@@ -369,7 +369,7 @@ for i, nn in enumerate(n_neighbors_values):
     })
 
 fig.legend(handles, labels, title='Grandinės', loc='right')
-fig.suptitle('UMAP Projekcija. skirtingos n_neighbors reikšmės', fontsize=20)
+fig.suptitle('UMAP Projekcija. Skirtingos n_neighbors reikšmės', fontsize=20)
 plt.show()
 
 pd.DataFrame(results)
@@ -389,7 +389,6 @@ for i, md in enumerate(min_dist_values):
         init='random',
         min_dist=md,
         metric='euclidean',
-        n_neighbors=20,
     )
 
     umap_result = umap_model.fit_transform(X_high)
@@ -431,13 +430,100 @@ for i, md in enumerate(min_dist_values):
     })
 
 fig.legend(handles, labels, title='Grandinės', loc='right')
-fig.suptitle('UMAP Projekcija. skirtingos min_dist reikšmės', fontsize=20)
+fig.suptitle('UMAP Projekcija. Skirtingos min_dist reikšmės', fontsize=20)
 plt.show()
 
 pd.DataFrame(results)
 
+#%%
+umap_model = umap.UMAP(
+    n_components=2,
+    random_state=80085,
+    init='random',
+    n_neighbors=12,
+    min_dist=0.8,
+    metric='euclidean'
+)
+
+umap_result = umap_model.fit_transform(X_high)
+
+X_umap_df = pd.DataFrame(umap_result, columns=['UMAP1', 'UMAP2'])
+X_umap_df['string'] = data_high['string'].values
+
+plt.figure(figsize=(10, 7))
+
+lims = [
+    min(np.floor(X_umap_df['UMAP1'].min()), np.floor(X_umap_df['UMAP2'].min()))-1,
+    max(np.ceil(X_umap_df['UMAP1'].max()), np.ceil(X_umap_df['UMAP2'].max()))+1
+]
+
+plt.xlim(lims)
+plt.ylim(lims)
+plt.gca().set_aspect('equal', adjustable='box')
+
+sns.scatterplot(
+    data=X_umap_df,
+    x='UMAP1',
+    y='UMAP2',
+    hue='string',
+    palette='husl',
+    s=75,
+    hue_order=[f'string_{j}' for j in range(1, 11)]
+)
+
+plt.title('UMAP projekcija (n_neighbors=12, min_dist=0.8)')
+plt.xlabel('UMAP1')
+plt.ylabel('UMAP2')
+
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
 # %%
 #UMAP medium
+umap_model = umap.UMAP(
+    n_components=2,
+    random_state=80085,
+    init='random',
+    n_neighbors=30,
+    min_dist=0.2,
+    metric='euclidean'
+)
+
+umap_result = umap_model.fit_transform(X_medium)
+
+X_umap_df = pd.DataFrame(umap_result, columns=['UMAP1', 'UMAP2'])
+X_umap_df['string'] = data_medium['string'].values
+
+plt.figure(figsize=(10, 7))
+
+lims = [
+    min(np.floor(X_umap_df['UMAP1'].min()), np.floor(X_umap_df['UMAP2'].min()))-1,
+    max(np.ceil(X_umap_df['UMAP1'].max()), np.ceil(X_umap_df['UMAP2'].max()))+1
+]
+
+plt.xlim(lims)
+plt.ylim(lims)
+plt.gca().set_aspect('equal', adjustable='box')
+
+sns.scatterplot(
+    data=X_umap_df,
+    x='UMAP1',
+    y='UMAP2',
+    hue='string',
+    palette='husl',
+    s=75,
+    hue_order=[f'string_{j}' for j in range(1, 11)]
+)
+
+plt.title('UMAP projekcija (n_neighbors=12, min_dist=0.8)')
+plt.xlabel('UMAP1')
+plt.ylabel('UMAP2')
+
+plt.legend(title='Grandinės', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
 
 
 
