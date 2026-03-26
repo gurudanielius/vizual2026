@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.manifold import trustworthiness
 
+
 # %%
 data = pd.read_csv('INV12.csv')
 data.columns = ['Timestamp'] + [f'string_{i}' for i in range(1, 11)] 
@@ -18,10 +19,12 @@ mapping["sum"]=mapping.sum(axis=1)
 mapping["category"]=np.where(mapping["sum"] > mapping["sum"].quantile(0.75), "High",np.where(mapping["sum"] < mapping["sum"].quantile(0.25), "Low", "Medium"))
 data["category"]=data["month_day"].map(mapping["category"])
 
+
 # %%
 string_cols = [f'string_{i}' for i in range(1, 11)]
 data_minmax_by_category = data.groupby('category')[string_cols].transform(lambda x: (x - x.min()) / (x.max() - x.min()))
 data[string_cols] = data_minmax_by_category
+
 
 # %%
 
@@ -51,9 +54,6 @@ result=result.sort_values(by=['month_day', 'string']).reset_index(drop=True)
 result.index.name = 'id'
 
 
-
-
-
 # %%
 data_high = result[result['category'] == 'High'].drop(columns=['category', 'month_day'])
 data_medium = result[result['category'] == 'Medium'].drop(columns=['category', 'month_day'])
@@ -61,8 +61,10 @@ data_low = result[result['category'] == 'Low'].drop(columns=['category', 'month_
 
 
 
+
 # %%
 X_high, X_medium, X_low = data_high.drop(columns=['string']).fillna(0), data_medium.drop(columns=['string']).fillna(0), data_low.drop(columns=['string']).fillna(0)
+
 
 
 
@@ -145,12 +147,14 @@ def plot_tsne_panel(tsne_results, hyperparameter, title, labels, ncols=3, figsiz
 
 
 
+
 # %%
 def trustworthiness_continuity(X, X_embedded, n_neighbors=5):
     t = trustworthiness(X, X_embedded, n_neighbors=n_neighbors)
     c = trustworthiness(X_embedded, X, n_neighbors=n_neighbors)
     print(f"Trustworthiness: {t:.4f}")
     print(f"Continuity: {c:.4f}")
+
 
 # %%
 perplexity_values = [5, 15, 30, 45, 60, 75]
@@ -164,14 +168,6 @@ tsne_early_exaggeration_results = {}
 tsne_max_iter_results = {}
 
 
-
-# %%
-from sklearn.metrics import davies_bouldin_score, silhouette_score
-
-def compare_dimensions(X, labels, method_name):
-	db_score = davies_bouldin_score(X, labels)
-	silhouette_avg = silhouette_score(X, labels)
-	print(f"{method_name} - Davies-Bouldin Score: {db_score:.4f}, Silhouette Score: {silhouette_avg:.4f}")
 
 
 # %%
@@ -188,6 +184,7 @@ for perplexity in perplexity_values:
     tsne_perplexity_results[perplexity] = tsne_high.fit_transform(X_high)
 
 plot_tsne_panel(tsne_perplexity_results, title = "t-SNE projekcija skirtingiems perpleksiškumams (aukšta elektros gamyba)", hyperparameter="Perpleksiškumas", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
+
 
 
 
@@ -208,6 +205,7 @@ plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija skirtingie
 
 
 
+
 # %%
 for early_exaggeration in early_exaggeration_values:
     tsne_high = TSNE(
@@ -223,6 +221,7 @@ for early_exaggeration in early_exaggeration_values:
     tsne_early_exaggeration_results[early_exaggeration] = tsne_high.fit_transform(X_high)
 
 plot_tsne_panel(tsne_early_exaggeration_results, title = "t-SNE projekcija skirtingiems early exaggeration reikšmėms (aukšta elektros gamyba)", hyperparameter="Early Exaggeration", labels=data_high['string'].values, ncols=3, figsize=(15, 10))
+
 
 
 # %%
@@ -243,6 +242,7 @@ plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija skirtingiems it
 
 
 
+
 # %%
 tsne_high_final = TSNE(
     n_components=2,
@@ -259,11 +259,11 @@ tsne_high_final_result = tsne_high_final.fit_transform(X_high)
 
 
 
+
 # %%
-compare_dimensions(X_high, data_high['string'].values, "Originali erdvė")
-compare_dimensions(tsne_high_final_result, data_high['string'].values, "t-SNE Projekcija - Aukšta gamyba")
 
 trustworthiness_continuity(X_high, tsne_high_final_result, n_neighbors=30)
+
 
 # %%
 labels=data_high['string'].values
@@ -316,8 +316,10 @@ plt.savefig(f"t-SNE projekcija (aukšta elektros energijos gamyba).png", dpi=300
 plt.show()
 
 
+
 # %%
 tsne_medium_results = {}
+
 
 
 # %%
@@ -340,6 +342,7 @@ plot_tsne_panel(tsne_medium_results, title = "t-SNE projekcija skirtingiems perp
 
 
 
+
 # %%
 for learning_rate in learning_rate_values:
     tsne_medium = TSNE(
@@ -356,6 +359,7 @@ for learning_rate in learning_rate_values:
 plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija skirtingiems mokymosi greičiams (vidutinė elektros gamyba)", hyperparameter="Mokymosi greitis", labels=data_medium['string'].values, ncols=3, figsize=(15, 10))
 
 #galima imti 1000, nes jau su 1500 atrodo, kad persimoko
+
 
 
 
@@ -379,6 +383,7 @@ plot_tsne_panel(tsne_early_exaggeration_results, title = "t-SNE projekcija skirt
 
 
 
+
 # %%
 for max_iter in max_iter_values:
     tsne_medium = TSNE(
@@ -394,6 +399,7 @@ for max_iter in max_iter_values:
     tsne_max_iter_results[max_iter] = tsne_medium.fit_transform(X_medium)
 
 plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija skirtingiems iteracijų skaičiams (vidutinė elektros gamyba)", hyperparameter="Iteracijų skaičius", labels=data_medium['string'].values, ncols=3, figsize=(15, 10))
+
 
 
 
@@ -414,11 +420,11 @@ tsne_medium_final_result = tsne_medium_final.fit_transform(X_medium)
 
 
 
+
 # %%
-compare_dimensions(X_medium, data_medium['string'].values, "Originali erdvė - Vidutinė gamyba")
-compare_dimensions(tsne_medium_final_result, data_medium['string'].values, "t-SNE Projekcija - Vidutinė gamyba")
 
 trustworthiness_continuity(X_medium, tsne_medium_final_result, n_neighbors=30)
+
 
 # %%
 labels=data_medium['string'].values
@@ -472,6 +478,7 @@ plt.show()
 
 
 
+
 # %%
 #tsne low
 tsne_low_results = {}
@@ -491,6 +498,7 @@ plot_tsne_panel(tsne_low_results, title = "t-SNE projekcija skirtingiems perplek
 #nelabai yra skirtumu, galime imti 30
 
 
+
 # %%
 for learning_rate in learning_rate_values:
     tsne_low = TSNE(
@@ -506,6 +514,7 @@ for learning_rate in learning_rate_values:
 
 plot_tsne_panel(tsne_learning_rate_results, title = "t-SNE projekcija skirtingiems mokymosi greičiams (maža elektros gamyba)", hyperparameter="Mokymosi greitis", labels=data_low['string'].values, ncols=3, figsize=(15, 10))
 #cia jau matom skirtumus, tai galim imti 500, nes 100 jau atrodo truputeli per didelis
+
 
 
 
@@ -528,6 +537,7 @@ plot_tsne_panel(tsne_early_exaggeration_results, title = "t-SNE projekcija skirt
 
 
 
+
 # %%
 for max_iter in max_iter_values:
     tsne_low = TSNE(
@@ -545,6 +555,7 @@ for max_iter in max_iter_values:
 plot_tsne_panel(tsne_max_iter_results, title = "t-SNE projekcija skirtingiems iteracijų skaičiams (maža elektros gamyba)", hyperparameter="Iteracijų skaičius", labels=data_low['string'].values, ncols=3, figsize=(15, 10))
 
 #velgi nesvarbu, po 1000 iteraciju grafikai identiski
+
 
 
 
@@ -614,11 +625,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_low, data_low['string'].values, "Originali erdvė - Žema gamyba")
-compare_dimensions(tsne_low_final_result, data_low['string'].values, "t-SNE Projekcija - Žema gamyba")
 
 trustworthiness_continuity(X_low, tsne_low_final_result, n_neighbors=30)
+
 
 # %%
 #UMAP high n_neighbors palyginimas
@@ -681,6 +692,7 @@ fig.suptitle('UMAP Projekcija. Skirtingos n_neighbors reikšmės', fontsize=20)
 plt.show()
 
 pd.DataFrame(results)
+
 
 
 # %%
@@ -747,11 +759,77 @@ pd.DataFrame(results)
 
 
 
+
+# %%
+#UMAP high lr palyginimas
+lr_s = [0.001, 0.1, 1.0, 10]
+fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+axes = axes.ravel()
+
+results = []
+handles, labels = None, None
+
+for i, lr in enumerate(lr_s):
+    umap_model = umap.UMAP(
+        n_components=2,
+        random_state=80085,
+        init='random',
+        learning_rate=lr,
+        metric='euclidean',
+    )
+
+    umap_result = umap_model.fit_transform(X_high)
+
+    X_umap_df = pd.DataFrame(umap_result, columns=['UMAP1', 'UMAP2'])
+    X_umap_df['string'] = data_high['string'].values
+
+    ax = axes[i]
+    lims = [
+        min(np.floor(X_umap_df['UMAP1'].min()), np.floor(X_umap_df['UMAP2'].min()))-0.2,
+        max(np.ceil(X_umap_df['UMAP1'].max()), np.ceil(X_umap_df['UMAP2'].max()))+0.2
+    ]
+    ax.set_xlim(lims)
+    ax.set_ylim(lims)
+    ax.set_aspect('equal', adjustable='box')
+
+    sns.scatterplot(
+        data=X_umap_df,
+        x='UMAP1',
+        y='UMAP2',
+        hue='string',
+        palette='husl',
+        s=75,
+        hue_order=[f'string_{j}' for j in range(1, 11)],
+        ax=ax,
+        legend=(i == 0),
+    )
+
+    ax.set_title(f'UMAP Projekcija (learning_rate={lr})')
+    ax.set_xlabel('UMAP1')
+    ax.set_ylabel('UMAP2')
+
+    if i == 0:
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend_.remove()
+
+    results.append({
+        'learning_rate': lr
+    })
+
+fig.legend(handles, labels, title='Grandinės', loc='right')
+fig.suptitle('UMAP Projekcija. Skirtingos learning_rate reikšmės', fontsize=20)
+plt.show()
+
+pd.DataFrame(results)
+
+
+
+
 # %%
 umap_model = umap.UMAP(
     n_components=2,
-    random_state=80085,
     init='random',
+    random_state=80085,
     n_neighbors=12,
     min_dist=0.8,
     metric='euclidean'
@@ -785,7 +863,7 @@ sns.scatterplot(
     hue_order=[f'string_{j}' for j in range(1, 11)]
 )
 
-plt.title('UMAP projekcija (n_neighbors=12, min_dist=0.8)')
+plt.title('UMAP projekcija (n_neighbors=12, min_dist=0.8,learning_rate=1)')
 plt.xlabel('UMAP1')
 plt.ylabel('UMAP2')
 
@@ -796,11 +874,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_high, data_high['string'].values, "Originali erdvė")
-compare_dimensions(umap_result, data_high['string'].values, "UMAP Projekcija - Aukšta gamyba")
 
 trustworthiness_continuity(X_high, umap_result, n_neighbors=30)
+
 
 # %%
 #UMAP medium
@@ -809,7 +887,7 @@ umap_model = umap.UMAP(
     random_state=80085,
     init='random',
     n_neighbors=30,
-    min_dist=0.2,
+    min_dist=0.8,
     metric='euclidean'
 )
 
@@ -841,7 +919,7 @@ sns.scatterplot(
     hue_order=[f'string_{j}' for j in range(1, 11)]
 )
 
-plt.title('UMAP projekcija (n_neighbors=12, min_dist=0.8)')
+plt.title('UMAP projekcija (n_neighbors=30, min_dist=0.8,learning_rate=1)')
 plt.xlabel('UMAP1')
 plt.ylabel('UMAP2')
 
@@ -854,11 +932,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_medium, data_medium['string'].values, "Originali erdvė - Vidutinė gamyba")
-compare_dimensions(umap_result, data_medium['string'].values, "UMAP Projekcija - Vidutinė gamyba")
 
 trustworthiness_continuity(X_medium, umap_result, n_neighbors=30)
+
 
 # %%
 #UMAP low
@@ -899,7 +977,7 @@ sns.scatterplot(
     hue_order=[f'string_{j}' for j in range(1, 11)]
 )
 
-plt.title('UMAP projekcija (n_neighbors=12, min_dist=0.8)')
+plt.title('UMAP projekcija (n_neighbors=12, min_dist=0.8,learning_rate=1)')
 plt.xlabel('UMAP1')
 plt.ylabel('UMAP2')
 
@@ -912,11 +990,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_low, data_low['string'].values, "Originali erdvė")
-compare_dimensions(umap_result, data_low['string'].values, "UMAP Projekcija - Žema gamyba")
 
 trustworthiness_continuity(X_low, umap_result, n_neighbors=30)
+
 
 # %%
 niter_values = [50, 100, 250, 500, 750, 1000]
@@ -982,6 +1060,7 @@ fig.suptitle('MDS Projekcija. max_iter skirtingos reikšmės, n_init=1, init=ran
 plt.show()
 
 pd.DataFrame(results)
+
 
 
 
@@ -1054,6 +1133,7 @@ pd.DataFrame(results)
 
 
 
+
 # %%
 #MDS high
 from sklearn.manifold import MDS
@@ -1088,11 +1168,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_high, data_high['string'].values, "Originali dimensija - Aukšta gamyba")
-compare_dimensions(mds_high_result, data_high['string'].values, "MDS Projekcija - Aukšta gamyba")
 
 trustworthiness_continuity(X_high, mds_high_result, n_neighbors=30)
+
 
 # %%
 #MDS medium
@@ -1128,11 +1208,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_medium, data_medium['string'].values, "Originali dimensija - Vidutinė gamyba")
-compare_dimensions(mds_medium_result, data_medium['string'].values, "MDS Projekcija - Vidutinė gamyba")
 
 trustworthiness_continuity(X_medium, mds_medium_result, n_neighbors=30)
+
 
 # %%
 #MDS low
@@ -1169,11 +1249,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_low, data_low['string'].values, "Originali dimensija - Žema gamyba")
-compare_dimensions(mds_low_result, data_low['string'].values, "MDS Projekcija - Žema gamyba")
 
 trustworthiness_continuity(X_low, mds_low_result, n_neighbors=30)
+
 
 # %%
 # PCA high
@@ -1214,11 +1294,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_high, data_high['string'].values, "Originali erdvė")
-compare_dimensions(pca_result, data_high['string'].values, "PCA")
 
 trustworthiness_continuity(X_high, pca_result, n_neighbors=30)
+
 
 # %%
 # PCA medium
@@ -1259,11 +1339,11 @@ plt.show()
 
 
 
+
 # %%
-compare_dimensions(X_medium, data_medium['string'].values, "Originali erdvė")
-compare_dimensions(pca_result, data_medium['string'].values, "UMAP Projekcija - Vidutinė gamyba")
 
 trustworthiness_continuity(X_medium, pca_result, n_neighbors=30)
+
 
 # %%
 # PCA low
@@ -1302,19 +1382,10 @@ plt.tight_layout()
 plt.show()
 
 
+
 # %%
-compare_dimensions(X_low, data_low['string'].values, "Originali erdvė")
-compare_dimensions(pca_result, data_low['string'].values, "PCA Projekcija - Žema gamyba")
 
 trustworthiness_continuity(X_low, pca_result, n_neighbors=30)
-
-# %%
-from sklearn.metrics import davies_bouldin_score, silhouette_score
-
-def compare_dimensions(X, labels, method_name):
-	db_score = davies_bouldin_score(X, labels)
-	silhouette_avg = silhouette_score(X, labels)
-	print(f"{method_name} - Davies-Bouldin Score: {db_score:.4f}, Silhouette Score: {silhouette_avg:.4f}")
 
 
 # %%
@@ -1332,6 +1403,7 @@ tsne_trust = pd.DataFrame({
 print(tsne_trust)
 
 
+
 # %%
 
 mds_trustworthiness_high = trustworthiness(X_high, mds_high_result, n_neighbors=30)
@@ -1345,6 +1417,7 @@ mds_trust = pd.DataFrame({
 print(mds_trust)
 
 
+
 # %%
 umap_trust = pd.DataFrame({
     'Dataset': ['Aukšta gamyba', 'Vidutinė gamyba', 'Žema gamyba'],
@@ -1352,7 +1425,11 @@ umap_trust = pd.DataFrame({
 })
 print(umap_trust)
 
+
 # %%
+
+
+
 
 
 
