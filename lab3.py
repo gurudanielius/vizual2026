@@ -6,6 +6,7 @@ import seaborn as sns
 
 
 
+
 # %%
 data_raw = pd.read_csv('Elektrines_duomenys_2023-2024m.csv', sep=';', decimal=',')
 data_selected_features= data_raw[["timestamp"] + [f"Total_active_power_INV-{i}" for i in range(1, 9)]]
@@ -16,6 +17,7 @@ mask_all_empty = data_selected_features[inv_cols].fillna(0).eq(0).all(axis=1)
 data_selected_features = data_selected_features.loc[~mask_all_empty]
 data_selected_features
 data_raw= data_selected_features
+
 
 
 # %%
@@ -31,14 +33,17 @@ data_final = data_final.dropna(subset=["timestamp"])
 
 
 
+
 # %%
 data_final.isna().sum()
 
 
 
 
+
 # %%
 data_final
+
 
 
 
@@ -63,9 +68,11 @@ final_dataset
 
 
 
+
 # %%
 final_dataset["Day"] = pd.to_datetime(final_dataset["Day"], errors="coerce").dt.date
 final_dataset["month"] = pd.to_datetime(final_dataset["Day"]).dt.month
+
 
 
 
@@ -78,6 +85,7 @@ season_map = {
 }
 
 final_dataset["season"] = final_dataset["month"].map(season_map)
+
 
 
 # %%
@@ -111,6 +119,7 @@ plt.show()
 
 
 
+
 # %%
 threshold = 60000
 
@@ -122,8 +131,10 @@ final_data = final_dataset[(final_dataset[num_cols] <= threshold).all(axis=1)]
 final_data
 
 
+
 # %%
 print(len(final_dataset), len(final_data)) #istrintos keturios eilutes
+
 
 
 # %%
@@ -134,6 +145,7 @@ melted = final_data.melt(id_vars=['Day', 'season'],
                          value_vars=timestamp_cols, 
                          var_name='timestamp', 
                          value_name='value')
+
 
 
 # %%
@@ -177,6 +189,7 @@ plt.tight_layout()
 plt.show()
 
 
+
 # %%
 id_cols = ["Day", "month", "season"]
 
@@ -193,6 +206,7 @@ keep_time_cols = [
 
 data_clean = df[id_cols + keep_time_cols]
 data_clean
+
 
 
 # %%
@@ -233,6 +247,7 @@ plt.show()
 
 
 
+
 # %%
 timestamp_cols = [col for col in data_clean.columns if col not in ['Day', 'season']]
 
@@ -244,10 +259,12 @@ melted = data_clean.melt(id_vars=['Day', 'season'],
 print(melted.groupby("season").describe())
 
 
+
 # %%
 season_stats = melted.groupby('season')['value'].describe().round(4)
 
 print(season_stats)
+
 
 
 # %%
@@ -259,6 +276,7 @@ max_val = num.loc[row_idx, col_name]
 max_day = winter_data.loc[row_idx, "Day"]
 
 max_day, col_name, max_val
+
 
 
 # %%
@@ -309,7 +327,9 @@ plt.show()
 
 
 
+
 # %%
+
 
 
 # %%
@@ -357,7 +377,9 @@ plt.show()
 
 print('Explained variance ratio:', np.round(pca_model.explained_variance_ratio_, 4))
 
+
 # %%
+
 
 
 # %%
@@ -380,7 +402,9 @@ print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}")
 
+
 # %%
+
 
 
 # %%
@@ -434,7 +458,9 @@ print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}")
 
+
 # %%
+
 
 
 # %%
@@ -492,7 +518,9 @@ results = tsne_grid_search(X, param_grid)
 for res in results:
     print(res)
 
+
 # %%
+
 
 
 # %%
@@ -545,6 +573,7 @@ c = trustworthiness(X_emb, X, n_neighbors=10)
 print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {mds.stress_:.4f}")
+
 
 # %%
 from sklearn.model_selection import ParameterGrid
@@ -599,7 +628,53 @@ results = mds_grid_search(X, param_grid)
 for res in results:
     print(res)
 
+
+# %%
+data_clean
+
+# %%
+from sklearn.cluster  import KMeans
+from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler
+X = data_clean.drop(columns=["Day","season","month"], errors="ignore").copy()
+
+# scale first
+X_scaled = StandardScaler().fit_transform(X)
+
+inertias = []
+k_values = range(1, 11)
+
+for k in k_values:
+    km = KMeans(n_clusters=k, random_state=42, n_init="auto")
+    km.fit(X)
+    inertias.append(km.inertia_)
+
+plt.figure(figsize=(8, 5))
+plt.plot(k_values, inertias, marker="o")
+plt.xlabel("Number of clusters (k)")
+plt.ylabel("Inertia")
+plt.title("Elbow Method")
+plt.grid(True)
+plt.show()
+
+# %%
+#k = 3
+
+K_means_model = KMeans(n_clusters=3, random_state=42, n_init="auto")
+clusters = K_means_model.fit_predict(X_scaled)
+
+data_clean["cluster"] = clusters
+#sil
+score = silhouette_score(X_scaled, clusters)
+print(f"Silhouette Score for k=3: {score:.4f}")
+
+# %%
+data_clean
+
 # %%
 
+clusters = K_means_model.fit_predict(X_emb)
+score = silhouette_score(X_emb, clusters)
+print(f"Silhouette Score for k=3: {score:.4f}")
 
 
