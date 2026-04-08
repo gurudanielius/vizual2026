@@ -1,48 +1,42 @@
 # %%
 import pandas as pd
-import matplotlib.pyplot as plt	
-
-
 
 # %%
-data_raw=pd.read_csv('Elektrines_duomenys_2023-2024m.csv',sep=';')
+data_raw = pd.read_csv('Elektrines_duomenys_2023-2024m.csv', sep=';', decimal=',')
 data_raw
 
+# %%
+#sum across rows
+data_raw["Total_active_power"] = data_raw[[f"Total_active_power_INV-{i}" for i in range(1, 9)]].sum(axis=1)
+data_final = data_raw[["timestamp", "Total_active_power"]].copy()
+data_final["timestamp"] = pd.to_datetime(data_final["timestamp"], errors="coerce")
+data_final = data_final.dropna(subset=["timestamp"])
+
 
 # %%
-data=data_raw[["timestamp"]+[f"Daily_energy_INV-{i}" for i in range(1, 9)]]
-data
-
+data_final.isna().sum()
 
 # %%
-# Daily totals table with timestamp column
-cols = [f"Daily_energy_INV-{i}" for i in range(1, 9)]
+data_final
 
-data["timestamp"] = pd.to_datetime(data["timestamp"], errors="coerce")
-data[cols] = data[cols].apply(pd.to_numeric, errors="coerce")
+# %%
+# Convert data_final to wide format: Day + one column per 5-minute timestamp
+data_final["Day"] = data_final["timestamp"].dt.date
+data_final["Time"] = data_final["timestamp"].dt.strftime("%H:%M")
 
-daily_totals = (
-    data.groupby(data["timestamp"].dt.date)[cols]
-    .max()
-    .reset_index()
+# If there are duplicate timestamps for a day, keep the summed value
+sum_of_inv = (
+    data_final.groupby(["Day", "Time"], as_index=False)["Total_active_power"]
+    .sum()
 )
+sum_of_inv_wide = sum_of_inv.pivot(index="Day", columns="Time", values="Total_active_power")
+sum_of_inv_wide.columns.name = None  # Remove index name
+sum_of_inv_wide = sum_of_inv_wide.reset_index()
 
-daily_totals.columns = ["timestamp"] + [f"Total_energy_INV-{i}" for i in range(1, 9)]
-daily_totals
-
-
-# %%
-daily_totals["timestamp"] 
-
+final_dataset = sum_of_inv_wide[["Day"] + sorted(sum_of_inv_wide.columns[1:])]
+final_dataset
 
 # %%
-
-
-
-# %%
-summer_data
-
-
-
+final_dataset.to_csv("final_dataset.csv", index=False)
 
 
