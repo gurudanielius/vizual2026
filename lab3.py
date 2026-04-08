@@ -1,6 +1,7 @@
 # %%
+from matplotlib import pyplot as plt
 import pandas as pd
-import matplotlib
+import seaborn as sns
 
 
 
@@ -176,12 +177,6 @@ season_order = ["Winter", "Spring", "Summer", "Autumn"]
 id_cols = ["Day", "month", "season"]
 value_cols = [c for c in data_clean.columns if c not in id_cols]
 
-melted = data_clean.melt(
-    id_vars=id_cols,
-    value_vars=value_cols,
-    var_name="time",
-    value_name="power"
-).dropna(subset=["power", "season"])
 
 # Collect values per season for boxplot
 data_by_season = [
@@ -225,5 +220,50 @@ max_val = num.loc[row_idx, col_name]
 max_day = winter_data.loc[row_idx, "Day"]
 
 max_day, col_name, max_val
+
+#%%
+season_order = ["Winter", "Spring", "Summer", "Autumn"]
+id_cols = ["Day", "month", "season"]
+value_cols = [c for c in data_clean.columns if c not in id_cols]
+
+melted = data_clean.melt(
+    id_vars=id_cols,
+    value_vars=value_cols,
+    var_name="time",
+    value_name="power"
+).dropna(subset=["power", "season"])
+
+heatmap_by_season = (
+    melted.groupby(["season", "time"], as_index=False)["power"]
+    .sum()
+    .pivot(index="season", columns="time", values="power")
+    .reindex(season_order)
+)
+
+season_labels_lt = {
+    "Winter": "Ziema",
+    "Spring": "Pavasaris",
+    "Summer": "Vasara",
+    "Autumn": "Ruduo"
+}
+heatmap_by_season.index = [season_labels_lt.get(season, season) for season in heatmap_by_season.index]
+
+plt.figure(figsize=(18, 6))
+sns.heatmap(heatmap_by_season, cmap="YlOrRd", cbar_kws={"label": "Energijos kiekis"})
+ax = plt.gca()
+
+xtick_positions = range(0, len(heatmap_by_season.columns), 12)
+ax.set_xticks(xtick_positions)
+ax.set_xticklabels(
+    [heatmap_by_season.columns[i] for i in xtick_positions],
+    rotation=45,
+    ha="right"
+)
+
+plt.title("Šilumos energijos kiekis per dieną pagal sezoną")
+plt.xlabel("Laikas")
+plt.ylabel("Metų laikas")
+plt.tight_layout()
+plt.show()
 
 
