@@ -177,6 +177,19 @@ season_order = ["Winter", "Spring", "Summer", "Autumn"]
 id_cols = ["Day", "month", "season"]
 value_cols = [c for c in data_clean.columns if c not in id_cols]
 
+season_labels_lt = {
+    "Winter": "Žiema",
+    "Spring": "Pavasaris",
+    "Summer": "Vasara",
+    "Autumn": "Ruduo"
+}
+
+melted = data_clean.melt(
+    id_vars=id_cols,
+    value_vars=value_cols,
+    var_name="time",
+    value_name="power"
+).dropna(subset=["power", "season"])
 
 # Collect values per season for boxplot
 data_by_season = [
@@ -187,11 +200,11 @@ data_by_season = [
 plt.figure(figsize=(10, 6))
 plt.boxplot(
     data_by_season,
-    labels=season_order
+    labels=[season_labels_lt.get(s, s) for s in season_order]
 )
-plt.title("Power Distribution by Season")
-plt.xlabel("Season")
-plt.ylabel("Power")
+plt.title("Metų laikų stačiakampės diagramos")
+plt.xlabel("Metų laikas")
+plt.ylabel("Elektros energijos kiekis")
 plt.tight_layout()
 plt.show()
 
