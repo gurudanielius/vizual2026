@@ -436,25 +436,20 @@ def tsne_grid_search(X, param_grid, n_neighbors=10, random_state=42):
     for params in grid:
         tsne = TSNE(n_components=2, random_state=random_state, max_iter=1000, **params)
         try:
-            X_emb = tsne.fit_transform(X)
-
-            # Compute metrics
-            t = trustworthiness(X, X_emb, n_neighbors=n_neighbors)
-            c = trustworthiness(X_emb, X, n_neighbors=n_neighbors)
-            stress = normalized_stress(X.values, X_emb)
+            X_emb_pca = tsne.fit_transform(X)
+            t = trustworthiness(X, X_emb_pca, n_neighbors=n_neighbors)
+            c = trustworthiness(X_emb_pca, X, n_neighbors=n_neighbors)
+            stress = normalized_stress(X.values, X_emb_pca)
             results.append({
                 'params': params,
                 'trustworthiness': t,
                 'continuity': c,
                 'stress': stress,
-                'score': score
             })
         except Exception as e:
             print(f"Error with params {params}: {e}")
             continue
-
     return results
-
 param_grid = {'perplexity': [5, 15, 20, 30, 50], 'learning_rate': [10, 20, 30, 50, 100]}
 results = tsne_grid_search(X, param_grid)
 for res in results:
@@ -526,17 +521,15 @@ def mds_grid_search(X, param_grid, n_neighbors=10, random_state=42):
     for params in grid:
         mds = MDS(n_components=2, normalized_stress=True, n_jobs=-1, n_init=10, **params)
         try:
-            X_emb = mds.fit_transform(X)
-
-            t = trustworthiness(X, X_emb, n_neighbors=n_neighbors)
-            c = trustworthiness(X_emb, X, n_neighbors=n_neighbors)
+            X_emb_MDS = mds.fit_transform(X)
+            t = trustworthiness(X, X_emb_MDS, n_neighbors=n_neighbors)
+            c = trustworthiness(X_emb_MDS, X, n_neighbors=n_neighbors)
             stress = mds.stress_
             results.append({
                 'params': params,
                 'trustworthiness': t,
                 'continuity': c,
-                'stress': stress,
-                'score': score
+                'stress': stress
             })
         except Exception as e:
             print(f"Error with params {params}: {e}")
@@ -544,22 +537,18 @@ def mds_grid_search(X, param_grid, n_neighbors=10, random_state=42):
 
     return results
 
-# Example usage:
 param_grid = {'max_iter': [150, 200, 300, 500, 1000]}
 results = mds_grid_search(X, param_grid)
 for res in results:
     print(res)
 
-
-
-
 # %%
-#  MDS
 mds = MDS(n_components=2, max_iter=1000, normalized_stress=True)
 mds_result = mds.fit_transform(X)
-
 mds_df = pd.DataFrame(mds_result, columns=['MDS1', 'MDS2'])
-mds_df['season'] = data_clean['season'].values
+mds_df['season'] = final_dataset_scaled['season'].values
+
+# %%
 
 plt.figure(figsize=(10, 7))
 lims = [
@@ -586,28 +575,21 @@ plt.legend(title='Season', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.show()
 
-# Compute trustworthiness and continuity
-X_emb = mds_df[['MDS1', 'MDS2']].values
 
-t = trustworthiness(X, X_emb, n_neighbors=10)
-c = trustworthiness(X_emb, X, n_neighbors=10)
+
+
+# %%
+X_emb_MDS = mds_df[['MDS1', 'MDS2']].values
+
+t = trustworthiness(X, X_emb_MDS, n_neighbors=10)
+c = trustworthiness(X_emb_MDS, X, n_neighbors=10)
 
 print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {mds.stress_:.4f}")
 
 
-
-
 # %%
-
-
-# %%
-X = data_clean.drop(columns=["Day","season","month"], errors="ignore").copy()
-
-# scale first
-X_scaled = StandardScaler().fit_transform(X)
-
 inertias = []
 k_values = range(1, 11)
 
@@ -627,20 +609,12 @@ plt.show()
 
 
 # %%
-#k = 3
-
 K_means_model = KMeans(n_clusters=3, random_state=42, n_init="auto")
 clusters = K_means_model.fit_predict(X_scaled)
 
 data_clean["cluster"] = clusters
-#sil
 score = silhouette_score(X_scaled, clusters)
 print(f"Silhouette Score for k=3: {score:.4f}")
-
-
-
-# %%
-data_clean
 
 
 
@@ -649,11 +623,5 @@ data_clean
 clusters = K_means_model.fit_predict(X_emb)
 score = silhouette_score(X_emb, clusters)
 print(f"Silhouette Score for k=3: {score:.4f}")
-
-
-
-
-
-
 
 
