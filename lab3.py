@@ -12,12 +12,14 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.preprocessing import StandardScaler
 
 
+
 # %%
 data_raw = pd.read_csv('Elektrines_duomenys_2023-2024m.csv', sep=';', decimal=',')
 data_selected_features= data_raw[["timestamp"] + [f"Total_active_power_INV-{i}" for i in range(1, 9)]]
 inv_cols = [c for c in data_selected_features.columns if c != "timestamp"]
 data_selected_features["timestamp"] = pd.to_datetime(data_selected_features["timestamp"])
 data_selected_features
+
 
 
 # %%
@@ -29,15 +31,17 @@ all_empty["count_per_day"] = all_empty.groupby("day")["timestamp"].transform("si
 all_empty
 
 
+
 # %% [markdown]
-#  Inverteris 2024 metais išsijungia random nuo 19:00 iki 02:00, todėl stebėjome keistumus, bet čia problemų yra ir kitų - skaityk duomenų kiekis atitinkantis 17 dienų yra tušti;
+#   Inverteris 2024 metais išsijungia random nuo 19:00 iki 02:00, todėl stebėjome keistumus, bet čia problemų yra ir kitų - skaityk duomenų kiekis atitinkantis 17 dienų yra tušti;
 
 # %%
 data_selected_features=data_selected_features[data_selected_features["timestamp"].dt.year == 2023]
 
 
+
 # %% [markdown]
-#  <span style="color: rgb(244, 12, 105);"> Daug geriau yra su praleistomis reikšmėmis -- čia yra tik viena diena kur visi inverteriai, jei imame tik 2023 metus, čia problema yra tik su 3 inverteriu, NA reikšmes čia užpildydami vidurkiu visai gerą aproksimacija gaunasi mano galva;
+#   <span style="color: rgb(244, 12, 105);"> Daug geriau yra su praleistomis reikšmėmis -- čia yra tik viena diena kur visi inverteriai, jei imame tik 2023 metus, čia problema yra tik su 3 inverteriu, NA reikšmes čia užpildydami vidurkiu visai gerą aproksimacija gaunasi mano galva;
 
 # %%
 mask_all_na_2023 = data_selected_features[inv_cols].isna().all(axis=1)
@@ -45,17 +49,20 @@ all_empty_2023=data_selected_features[mask_all_na_2023]
 all_empty_2023
 
 
+
 # %%
 data_raw = data_selected_features[~mask_all_na_2023]
 data_raw
 
 
+
 # %% [markdown]
-#  Turime su 3 inverteriu daug praleistų reikšmelių (56 dienas) siūlau trinti, kol kas užpildau vidurkiu pagal eilutes
+#   Turime su 3 inverteriu daug praleistų reikšmelių (56 dienas) siūlau trinti, kol kas užpildau vidurkiu pagal eilutes
 
 # %%
 data_raw[inv_cols] = data_raw[inv_cols].apply(lambda row: row.fillna(row.mean()), axis=1)
 data_raw
+
 
 
 # %%
@@ -64,8 +71,10 @@ data_summed= data_raw[["timestamp", "Total_active_power"]]
 data_summed
 
 
+
 # %%
 data_summed.isna().sum()
+
 
 
 # %%
@@ -84,8 +93,10 @@ final_dataset = sum_of_inv_wide[["Day"] + sorted(sum_of_inv_wide.columns[1:])]
 data_summed
 
 
+
 # %%
 final_dataset["month"] = pd.to_datetime(final_dataset["Day"]).dt.month
+
 
 
 # %%
@@ -97,6 +108,7 @@ season_map = {
 }
 
 final_dataset["season"] = final_dataset["month"].map(season_map)
+
 
 
 # %%
@@ -140,6 +152,7 @@ plt.tight_layout()
 plt.show()
 
 
+
 # %%
 final_dataset_melted["time_dt"] = pd.to_datetime(final_dataset_melted["time"], format="%H:%M", errors="coerce")
 line_df = (
@@ -176,13 +189,15 @@ plt.show()
 
 
 
+
 # %% [markdown]
-#  Patriminau laiką;
+#   Patriminau laiką;
 
 # %%
 print(final_dataset.head())
 print("#" * 50)
 print(final_dataset_melted.head())
+
 
 
 # %%
@@ -199,12 +214,15 @@ final_dataset_melted_scaled = final_dataset_scaled.melt(
 )
 
 
+
 # %%
 final_dataset_scaled
 
 
+
 # %%
 final_dataset_melted_scaled
+
 
 
 # %%
@@ -233,6 +251,7 @@ plt.xlabel("Sezonas")
 plt.ylabel("Galia")
 plt.tight_layout()
 plt.show()
+
 
 
 # %%
@@ -271,13 +290,16 @@ plt.show()
 
 
 
+
 # %%
 print(final_dataset_melted[["power","season"]].groupby("season").describe())
 
 
 
+
 # %%
 print(final_dataset_melted_scaled[["power","season"]].groupby("season").describe())
+
 
 
 
@@ -318,6 +340,7 @@ plt.show()
 
 
 
+
 # %%
 
 heatmap_by_season_scaled = (
@@ -355,16 +378,19 @@ plt.show()
 
 
 
+
 # %%
 final_dataset
 id_cols
+
 
 # %%
 X = final_dataset_scaled.drop(columns=id_cols).select_dtypes(include='number')
 
 
+
 # %% [markdown]
-# ### PCA
+#  ### PCA
 
 # %%
 pca_model = PCA(n_components=2, random_state=80085)
@@ -405,11 +431,13 @@ print('Explained variance ratio:', np.round(pca_model.explained_variance_ratio_,
 
 
 
+
 # %%
 def normalized_stress(X, X_emb):
 	D_orig = pairwise_distances(X)
 	D_emb = pairwise_distances(X_emb)
 	return np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
+
 
 # %%
 X_emb_pca = X_pca_df[['PC1', 'PC2']].values
@@ -425,8 +453,10 @@ print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}")
 
 
+
 # %% [markdown]
-# ### T-SNE
+#  ### T-SNE
+# 
 # 
 
 # %%
@@ -458,11 +488,13 @@ for res in results:
 
 
 
+
 # %%
 tsne = TSNE(n_components=2, random_state=42, perplexity=10, max_iter=1000)
 tsne_result = tsne.fit_transform(X)
 tsne_df = pd.DataFrame(tsne_result, columns=['TSNE1', 'TSNE2'])
 tsne_df['season'] = final_dataset_scaled['season'].values
+
 
 
 # %%
@@ -492,6 +524,7 @@ plt.tight_layout()
 plt.show()
 
 
+
 # %%
 
 X_emb_tsne = tsne_df[['TSNE1', 'TSNE2']].values
@@ -510,8 +543,9 @@ print(f"Stress: {stress:.4f}")
 
 
 
+
 # %% [markdown]
-# ## MDS
+#  ## MDS
 
 # %%
 
@@ -542,11 +576,13 @@ results = mds_grid_search(X, param_grid)
 for res in results:
     print(res)
 
+
 # %%
 mds = MDS(n_components=2, max_iter=1000, normalized_stress=True)
 mds_result = mds.fit_transform(X)
 mds_df = pd.DataFrame(mds_result, columns=['MDS1', 'MDS2'])
 mds_df['season'] = final_dataset_scaled['season'].values
+
 
 # %%
 
@@ -578,6 +614,7 @@ plt.show()
 
 
 
+
 # %%
 X_emb_MDS = mds_df[['MDS1', 'MDS2']].values
 
@@ -589,39 +626,70 @@ print(f"Continuity: {c:.4f}")
 print(f"Stress: {mds.stress_:.4f}")
 
 
+
+# %%
+X_emb_pca
+
 # %%
 inertias = []
 k_values = range(1, 11)
 
 for k in k_values:
-    km = KMeans(n_clusters=k, random_state=42, n_init="auto")
-    km.fit(X)
+    km = KMeans(n_clusters=k, random_state=80085, n_init="auto")
+    km.fit(X_emb_pca)
     inertias.append(km.inertia_)
-
 plt.figure(figsize=(8, 5))
 plt.plot(k_values, inertias, marker="o")
-plt.xlabel("Number of clusters (k)")
-plt.ylabel("Inertia")
-plt.title("Elbow Method")
+plt.xlabel("Klusterių skaičius (k)")
+plt.ylabel("Inercija")
+plt.title("Alkūnės metodas")
 plt.grid(True)
 plt.show()
 
 
+# %%
+K_means_model = KMeans(n_clusters=3, random_state=80085, n_init="auto")
+clusters = K_means_model.fit_predict(X_emb_pca)
 
 # %%
-K_means_model = KMeans(n_clusters=3, random_state=42, n_init="auto")
-clusters = K_means_model.fit_predict(X_scaled)
-
-data_clean["cluster"] = clusters
-score = silhouette_score(X_scaled, clusters)
+results=final_dataset[["Day", "season"]].copy()
+results["cluster"] = clusters
+score = silhouette_score(X_emb_pca, clusters)
 print(f"Silhouette Score for k=3: {score:.4f}")
-
-
 
 # %%
+results
 
-clusters = K_means_model.fit_predict(X_emb)
-score = silhouette_score(X_emb, clusters)
-print(f"Silhouette Score for k=3: {score:.4f}")
+# %%
+# Kryžminė lentelė: cluster x season
+if 'results' in globals() and {'cluster', 'season'}.issubset(results.columns):
+    base_df = results[['cluster', 'season']].copy()
+elif {'cluster', 'season'}.issubset(final_dataset_scaled.columns):
+    base_df = final_dataset_scaled[['cluster', 'season']].copy()
+else:
+    raise ValueError("Nerandu stulpelių 'cluster' ir 'season'. Pirma paleisk klasterizacijos celes.")
+
+# Kiekiai
+ct_cluster_season = pd.crosstab(base_df['cluster'], base_df['season'], margins=True)
+print('Kryžminė lentelė (kiekiai): cluster x season')
+display(ct_cluster_season)
+
+# Eilučių procentai (kiekvieno klasterio sezoniškumo pasiskirstymas)
+ct_cluster_season_row_pct = pd.crosstab(
+    base_df['cluster'],
+    base_df['season'],
+    normalize='index'
+).round(4) * 100
+print('Kryžminė lentelė (eilutės %, cluster -> season):')
+display(ct_cluster_season_row_pct)
+
+# Stulpelių procentai (kiekvieno sezono klasterių pasiskirstymas)
+ct_cluster_season_col_pct = pd.crosstab(
+    base_df['cluster'],
+    base_df['season'],
+    normalize='columns'
+).round(4) * 100
+print('Kryžminė lentelė (stulpelai %, season -> cluster):')
+display(ct_cluster_season_col_pct)
 
 
