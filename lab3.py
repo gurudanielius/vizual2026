@@ -49,22 +49,22 @@ data_final
 
 
 # %%
-# Convert data_final to wide format: Day + one column per 5-minute timestamp
-data_final["Day"] = data_final["timestamp"].dt.date
-data_final["Time"] = data_final["timestamp"].dt.strftime("%H:%M")
 
-# If there are duplicate timestamps for a day, keep the summed value
+# Convert data_final to wide format: Day + one column per hourly timestamp
+data_final["Day"] = data_final["timestamp"].dt.date
+data_final["Hour"] = data_final["timestamp"].dt.floor("H").dt.strftime("%H:%M")
+
+# If there are duplicate hourly timestamps for a day, keep the summed value
 sum_of_inv = (
-    data_final.groupby(["Day", "Time"], as_index=False)["Total_active_power"]
+    data_final.groupby(["Day", "Hour"], as_index=False)["Total_active_power"]
     .sum()
 )
-sum_of_inv_wide = sum_of_inv.pivot(index="Day", columns="Time", values="Total_active_power")
+sum_of_inv_wide = sum_of_inv.pivot(index="Day", columns="Hour", values="Total_active_power")
 sum_of_inv_wide.columns.name = None  # Remove index name
 sum_of_inv_wide = sum_of_inv_wide.reset_index()
 
 final_dataset = sum_of_inv_wide[["Day"] + sorted(sum_of_inv_wide.columns[1:])]
 final_dataset
-
 
 
 
@@ -207,7 +207,19 @@ keep_time_cols = [
 data_clean = df[id_cols + keep_time_cols]
 data_clean
 
+from sklearn.preprocessing import RobustScaler
 
+id_cols = ["Day", "month", "season"]
+value_cols = [c for c in data_clean.columns if c not in id_cols]
+
+scaler = RobustScaler()
+scaled_values = scaler.fit_transform(data_clean[value_cols])
+
+# Sudėti atgal į DataFrame su originalia struktūra
+df_scaled = pd.DataFrame(scaled_values, columns=value_cols)
+df_scaled[id_cols] = data_clean[id_cols].reset_index(drop=True)
+
+df_scaled
 
 # %%
 season_order = ["Winter", "Spring", "Summer", "Autumn"]
