@@ -1,8 +1,15 @@
 # %%
 from matplotlib import pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.manifold import MDS, TSNE, trustworthiness
+from sklearn.metrics import pairwise_distances, silhouette_score
+from sklearn.model_selection import ParameterGrid
 from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import StandardScaler
 
 
 # %%
@@ -12,6 +19,7 @@ inv_cols = [c for c in data_selected_features.columns if c != "timestamp"]
 data_selected_features["timestamp"] = pd.to_datetime(data_selected_features["timestamp"])
 data_selected_features
 
+
 # %%
 mask_all_na = data_selected_features[inv_cols].isna().all(axis=1)
 all_empty=data_selected_features[mask_all_na]
@@ -20,38 +28,45 @@ all_empty = all_empty[(all_empty["timestamp"].dt.hour >= 2) & (all_empty["timest
 all_empty["count_per_day"] = all_empty.groupby("day")["timestamp"].transform("size")
 all_empty
 
+
 # %% [markdown]
-# Inverteris 2024 metais išsijungia random nuo 19:00 iki 02:00, todėl stebėjome keistumus, bet čia problemų yra ir kitų - skaityk duomenų kiekis atitinkantis 17 dienų yra tušti;
+#  Inverteris 2024 metais išsijungia random nuo 19:00 iki 02:00, todėl stebėjome keistumus, bet čia problemų yra ir kitų - skaityk duomenų kiekis atitinkantis 17 dienų yra tušti;
 
 # %%
 data_selected_features=data_selected_features[data_selected_features["timestamp"].dt.year == 2023]
 
+
 # %% [markdown]
-# <span style="color: rgb(244, 12, 105);"> Daug geriau yra su praleistomis reikšmėmis -- čia yra tik viena diena kur visi inverteriai, jei imame tik 2023 metus, čia problema yra tik su 3 inverteriu, NA reikšmes čia užpildydami vidurkiu visai gerą aproksimacija gaunasi mano galva;
+#  <span style="color: rgb(244, 12, 105);"> Daug geriau yra su praleistomis reikšmėmis -- čia yra tik viena diena kur visi inverteriai, jei imame tik 2023 metus, čia problema yra tik su 3 inverteriu, NA reikšmes čia užpildydami vidurkiu visai gerą aproksimacija gaunasi mano galva;
 
 # %%
 mask_all_na_2023 = data_selected_features[inv_cols].isna().all(axis=1)
 all_empty_2023=data_selected_features[mask_all_na_2023]
 all_empty_2023
 
+
 # %%
 data_raw = data_selected_features[~mask_all_na_2023]
 data_raw
 
+
 # %% [markdown]
-# Turime su 3 inverteriu daug praleistų reikšmelių (56 dienas) siūlau trinti, kol kas užpildau vidurkiu pagal eilutes
+#  Turime su 3 inverteriu daug praleistų reikšmelių (56 dienas) siūlau trinti, kol kas užpildau vidurkiu pagal eilutes
 
 # %%
 data_raw[inv_cols] = data_raw[inv_cols].apply(lambda row: row.fillna(row.mean()), axis=1)
 data_raw
+
 
 # %%
 data_raw["Total_active_power"] = data_raw[[f"Total_active_power_INV-{i}" for i in range(1, 9)]].sum(axis=1)
 data_summed= data_raw[["timestamp", "Total_active_power"]]
 data_summed
 
+
 # %%
 data_summed.isna().sum()
+
 
 # %%
 data_summed["Day"] = data_summed["timestamp"].dt.date
@@ -68,11 +83,10 @@ sum_of_inv_wide = sum_of_inv_wide.reset_index()
 final_dataset = sum_of_inv_wide[["Day"] + sorted(sum_of_inv_wide.columns[1:])]
 data_summed
 
+
 # %%
 final_dataset["month"] = pd.to_datetime(final_dataset["Day"]).dt.month
 
-# %%
-final_dataset
 
 # %%
 season_map = {
@@ -83,6 +97,7 @@ season_map = {
 }
 
 final_dataset["season"] = final_dataset["month"].map(season_map)
+
 
 # %%
 season_order = ["Winter", "Spring", "Summer", "Autumn"]
@@ -124,25 +139,6 @@ plt.ylabel("Galia")
 plt.tight_layout()
 plt.show()
 
-# %%
-# threshold = 60000
-# final_dataset = final_dataset.fillna(0)
-# num_cols = final_dataset.select_dtypes(include="number").columns
-# final_data = final_dataset[(final_dataset[num_cols] <= threshold).all(axis=1)]
-# final_data
-
-# %%
-# print(len(final_dataset), len(final_data)) #istrintos keturios eilutes
-
-# %%
-# # Melt the dataset so all timestamp columns become rows
-# timestamp_cols = [col for col in final_data.columns if col not in ['Day', 'season']]
-
-# melted = final_data.melt(id_vars=['Day', 'season'], 
-#                          value_vars=timestamp_cols, 
-#                          var_name='timestamp', 
-#                          value_name='value')
-
 
 # %%
 final_dataset_melted["time_dt"] = pd.to_datetime(final_dataset_melted["time"], format="%H:%M", errors="coerce")
@@ -179,13 +175,15 @@ plt.show()
 
 
 
+
 # %% [markdown]
-# Patriminau laiką;
+#  Patriminau laiką;
 
 # %%
 print(final_dataset.head())
 print("#" * 50)
 print(final_dataset_melted.head())
+
 
 # %%
 id_cols = ["Day", "month", "season"]
@@ -200,11 +198,14 @@ final_dataset_melted_scaled = final_dataset_scaled.melt(
     value_name="power"
 )
 
+
 # %%
 final_dataset_scaled
 
+
 # %%
 final_dataset_melted_scaled
+
 
 # %%
 data_by_season = [
@@ -227,11 +228,12 @@ bp = plt.boxplot(
 for box, color in zip(bp["boxes"], season_colors):
     box.set_facecolor(color)
 
-plt.title("Galios pasiskirstymas pagal sezoną")
+plt.title("Galios pasiskirstymas pagal sezoną - normuota")
 plt.xlabel("Sezonas")
 plt.ylabel("Galia")
 plt.tight_layout()
 plt.show()
+
 
 # %%
 final_dataset_melted_scaled["time_dt"] = pd.to_datetime(final_dataset_melted_scaled["time"], format="%H:%M", errors="coerce")
@@ -257,7 +259,7 @@ for s in season_order:
         label=season_labels_lt.get(s, s),
         linewidth=1.8
     )
-plt.title("Galios generavimas pagal laiką ir sezoną")
+plt.title("Galios generavimas pagal laiką ir sezoną - normuota")
 plt.xlabel("Laikas")
 plt.ylabel("Galia")
 plt.xticks(ticks=range(0, len(part["time"])), rotation=45, ha="right") 
@@ -268,44 +270,21 @@ plt.show()
 
 
 
-# %%
-final_dataset_melted
 
 # %%
 print(final_dataset_melted[["power","season"]].groupby("season").describe())
+
 
 
 # %%
 print(final_dataset_melted_scaled[["power","season"]].groupby("season").describe())
 
 
-# %%
-winter_data = data_clean[data_clean["season"] == "Winter"].copy()
-
-num = winter_data.select_dtypes(include="number")
-row_idx, col_name = num.stack().idxmax()   # location of absolute max
-max_val = num.loc[row_idx, col_name]
-max_day = winter_data.loc[row_idx, "Day"]
-
-max_day, col_name, max_val
-
-
-
 
 # %%
-season_order = ["Winter", "Spring", "Summer", "Autumn"]
-id_cols = ["Day", "month", "season"]
-value_cols = [c for c in data_clean.columns if c not in id_cols]
-
-melted = data_clean.melt(
-    id_vars=id_cols,
-    value_vars=value_cols,
-    var_name="time",
-    value_name="power"
-).dropna(subset=["power", "season"])
 
 heatmap_by_season = (
-    melted.groupby(["season", "time"], as_index=False)["power"]
+    final_dataset_melted.groupby(["season", "time"], as_index=False)["power"]
     .sum()
     .pivot(index="season", columns="time", values="power")
     .reindex(season_order)
@@ -323,7 +302,7 @@ plt.figure(figsize=(18, 6))
 sns.heatmap(heatmap_by_season, cmap="YlOrRd", cbar_kws={"label": "Energijos kiekis"})
 ax = plt.gca()
 
-xtick_positions = range(0, len(heatmap_by_season.columns), 12)
+xtick_positions = range(0, len(heatmap_by_season.columns))
 ax.set_xticks(xtick_positions)
 ax.set_xticklabels(
     [heatmap_by_season.columns[i] for i in xtick_positions],
@@ -339,23 +318,59 @@ plt.show()
 
 
 
+# %%
+
+heatmap_by_season_scaled = (
+    final_dataset_melted_scaled.groupby(["season", "time"], as_index=False)["power"]
+    .sum()
+    .pivot(index="season", columns="time", values="power")
+    .reindex(season_order)
+)
+
+season_labels_lt = {
+    "Winter": "Ziema",
+    "Spring": "Pavasaris",
+    "Summer": "Vasara",
+    "Autumn": "Ruduo"
+}
+heatmap_by_season_scaled.index = [season_labels_lt.get(season, season) for season in heatmap_by_season_scaled.index]
+
+plt.figure(figsize=(18, 6))
+sns.heatmap(heatmap_by_season_scaled, cmap="YlOrRd", cbar_kws={"label": "Energijos kiekis"})
+ax = plt.gca()
+
+xtick_positions = range(0, len(heatmap_by_season_scaled.columns))
+ax.set_xticks(xtick_positions)
+ax.set_xticklabels(
+    [heatmap_by_season_scaled.columns[i] for i in xtick_positions],
+    rotation=45,
+    ha="right"
+)
+
+plt.title("Šilumos energijos kiekis per dieną pagal sezoną - normuota")
+plt.xlabel("Laikas")
+plt.ylabel("Metų laikas")
+plt.tight_layout()
+plt.show()
 
 
 
 # %%
-#PCA
+final_dataset
+id_cols
 
-from sklearn.decomposition import PCA
-import numpy as np
+# %%
+X = final_dataset_scaled.drop(columns=id_cols).select_dtypes(include='number')
 
-id_cols = ['Day', 'month', 'season']
-X = data_clean.drop(columns=id_cols).select_dtypes(include='number')
 
+# %% [markdown]
+# ### PCA
+
+# %%
 pca_model = PCA(n_components=2, random_state=80085)
 pca_result = pca_model.fit_transform(X)
-
 X_pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
-X_pca_df['season'] = data_clean['season'].values
+X_pca_df['season'] = final_dataset_scaled['season'].values
 
 
 plt.figure(figsize=(10, 7))
@@ -389,40 +404,73 @@ print('Explained variance ratio:', np.round(pca_model.explained_variance_ratio_,
 
 
 
+
 # %%
-from sklearn.manifold import trustworthiness
-from sklearn.metrics import pairwise_distances
-import numpy as np
+def normalized_stress(X, X_emb):
+	D_orig = pairwise_distances(X)
+	D_emb = pairwise_distances(X_emb)
+	return np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
 
-X_emb = X_pca_df[['PC1', 'PC2']].values
+# %%
+X_emb_pca = X_pca_df[['PC1', 'PC2']].values
+t = trustworthiness(X.values, X_emb_pca, n_neighbors=10)
+c = trustworthiness(X_emb_pca, X.values, n_neighbors=10)
 
-# Trustworthiness and continuity
-t = trustworthiness(X.values, X_emb, n_neighbors=10)
-c = trustworthiness(X_emb, X.values, n_neighbors=10)
-
-# Stress-like measure for the 2D embedding
 D_orig = pairwise_distances(X.values)
-D_emb = pairwise_distances(X_emb)
-stress = np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
+D_emb = pairwise_distances(X_emb_pca)
+stress = normalized_stress(X.values, X_emb_pca)
 
 print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}")
 
 
+# %% [markdown]
+# ### T-SNE
+# 
 
 # %%
-from sklearn.manifold import TSNE, trustworthiness
-from sklearn.metrics import pairwise_distances
-import numpy as np
+def tsne_grid_search(X, param_grid, n_neighbors=10, random_state=42):
+    grid = ParameterGrid(param_grid)
+    results = []
+    for params in grid:
+        tsne = TSNE(n_components=2, random_state=random_state, max_iter=1000, **params)
+        try:
+            X_emb = tsne.fit_transform(X)
 
-# Fit t-SNE
+            # Compute metrics
+            t = trustworthiness(X, X_emb, n_neighbors=n_neighbors)
+            c = trustworthiness(X_emb, X, n_neighbors=n_neighbors)
+            stress = normalized_stress(X.values, X_emb)
+            results.append({
+                'params': params,
+                'trustworthiness': t,
+                'continuity': c,
+                'stress': stress,
+                'score': score
+            })
+        except Exception as e:
+            print(f"Error with params {params}: {e}")
+            continue
+
+    return results
+
+param_grid = {'perplexity': [5, 15, 20, 30, 50], 'learning_rate': [10, 20, 30, 50, 100]}
+results = tsne_grid_search(X, param_grid)
+for res in results:
+    print(res)
+
+
+
+
+# %%
 tsne = TSNE(n_components=2, random_state=42, perplexity=10, max_iter=1000)
 tsne_result = tsne.fit_transform(X)
-
 tsne_df = pd.DataFrame(tsne_result, columns=['TSNE1', 'TSNE2'])
-tsne_df['season'] = data_clean['season'].values
+tsne_df['season'] = final_dataset_scaled['season'].values
 
+
+# %%
 plt.figure(figsize=(10, 7))
 lims = [
     min(np.floor(tsne_df['TSNE1'].min()), np.floor(tsne_df['TSNE2'].min())) - 1,
@@ -448,15 +496,17 @@ plt.legend(title='Season', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.show()
 
-# Compute trustworthiness, continuity, and stress
-X_emb = tsne_df[['TSNE1', 'TSNE2']].values
 
-t = trustworthiness(X, X_emb, n_neighbors=10)
-c = trustworthiness(X_emb, X, n_neighbors=10)
+# %%
+
+X_emb_tsne = tsne_df[['TSNE1', 'TSNE2']].values
+
+t = trustworthiness(X, X_emb_tsne, n_neighbors=10)
+c = trustworthiness(X_emb_tsne, X, n_neighbors=10)
 
 D_orig = pairwise_distances(X)
-D_emb = pairwise_distances(X_emb)
-stress = np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
+D_emb = pairwise_distances(X_emb_tsne)
+stress = normalized_stress(X.values, X_emb_tsne)
 
 print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
@@ -464,42 +514,23 @@ print(f"Stress: {stress:.4f}")
 
 
 
+
+# %% [markdown]
+# ## MDS
+
 # %%
-from sklearn.model_selection import ParameterGrid
-from sklearn.manifold import TSNE, trustworthiness
-from sklearn.metrics import pairwise_distances
-import numpy as np
 
-def tsne_grid_search(X, param_grid, n_neighbors=10, random_state=42):
-    """
-    Perform grid search for t-SNE hyperparameters and return all combinations with metrics.
-
-    Parameters:
-    - X: Input data (scaled)
-    - param_grid: Dict of parameters to search, e.g., {'perplexity': [5, 30, 50], 'learning_rate': [10, 200]}
-    - n_neighbors: Number of neighbors for trustworthiness/continuity
-    - random_state: Random state for reproducibility
-
-    Returns:
-    - results: List of dicts with params, trustworthiness, continuity, stress, and score
-    """
+def mds_grid_search(X, param_grid, n_neighbors=10, random_state=42):
     grid = ParameterGrid(param_grid)
     results = []
-
     for params in grid:
-        tsne = TSNE(n_components=2, random_state=random_state, max_iter=1000, **params)
+        mds = MDS(n_components=2, normalized_stress=True, n_jobs=-1, n_init=10, **params)
         try:
-            X_emb = tsne.fit_transform(X)
+            X_emb = mds.fit_transform(X)
 
-            # Compute metrics
             t = trustworthiness(X, X_emb, n_neighbors=n_neighbors)
             c = trustworthiness(X_emb, X, n_neighbors=n_neighbors)
-            D_orig = pairwise_distances(X)
-            D_emb = pairwise_distances(X_emb)
-            stress = np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
-
-            score = t  # Use trustworthiness as the score
-
+            stress = mds.stress_
             results.append({
                 'params': params,
                 'trustworthiness': t,
@@ -514,23 +545,16 @@ def tsne_grid_search(X, param_grid, n_neighbors=10, random_state=42):
     return results
 
 # Example usage:
-param_grid = {'perplexity': [5, 15, 20, 30, 50], 'learning_rate': [10, 20, 30, 50, 100]}
-results = tsne_grid_search(X, param_grid)
+param_grid = {'max_iter': [150, 200, 300, 500, 1000]}
+results = mds_grid_search(X, param_grid)
 for res in results:
     print(res)
 
 
 
+
 # %%
-from sklearn.manifold import MDS, trustworthiness
-from sklearn.metrics import pairwise_distances
-import numpy as np
-
-id_cols = ['Day', 'month', 'season']
-X = data_clean.drop(columns=id_cols).select_dtypes(include='number')
-
-
-# Fit MDS
+#  MDS
 mds = MDS(n_components=2, max_iter=1000, normalized_stress=True)
 mds_result = mds.fit_transform(X)
 
@@ -574,69 +598,11 @@ print(f"Stress: {mds.stress_:.4f}")
 
 
 
+
 # %%
-from sklearn.model_selection import ParameterGrid
-from sklearn.manifold import MDS, trustworthiness
-from sklearn.metrics import pairwise_distances
-import numpy as np
-
-def mds_grid_search(X, param_grid, n_neighbors=10, random_state=42):
-    """
-    Perform grid search for MDS hyperparameters and return all combinations with metrics.
-
-    Parameters:
-    - X: Input data (scaled)
-    - param_grid: Dict of parameters to search, e.g., {'max_iter': [300, 1000], 'n_init': [4, 10]}
-    - n_neighbors: Number of neighbors for trustworthiness/continuity
-    - random_state: Random state for reproducibility
-
-    Returns:
-    - results: List of dicts with params, trustworthiness, continuity, stress, and score
-    """
-    grid = ParameterGrid(param_grid)
-    results = []
-
-    for params in grid:
-        mds = MDS(n_components=2, normalized_stress=True, n_jobs=-1, n_init=10, **params)
-        try:
-            X_emb = mds.fit_transform(X)
-
-            # Compute metrics
-            t = trustworthiness(X, X_emb, n_neighbors=n_neighbors)
-            c = trustworthiness(X_emb, X, n_neighbors=n_neighbors)
-            stress = mds.stress_
-
-            score = t  # Use trustworthiness as the score
-
-            results.append({
-                'params': params,
-                'trustworthiness': t,
-                'continuity': c,
-                'stress': stress,
-                'score': score
-            })
-        except Exception as e:
-            print(f"Error with params {params}: {e}")
-            continue
-
-    return results
-
-# Example usage:
-param_grid = {'max_iter': [150, 200, 300, 500, 1000]}
-results = mds_grid_search(X, param_grid)
-for res in results:
-    print(res)
-
 
 
 # %%
-data_clean
-
-
-# %%
-from sklearn.cluster  import KMeans
-from sklearn.metrics import silhouette_score
-from sklearn.preprocessing import StandardScaler
 X = data_clean.drop(columns=["Day","season","month"], errors="ignore").copy()
 
 # scale first
@@ -659,6 +625,7 @@ plt.grid(True)
 plt.show()
 
 
+
 # %%
 #k = 3
 
@@ -671,8 +638,10 @@ score = silhouette_score(X_scaled, clusters)
 print(f"Silhouette Score for k=3: {score:.4f}")
 
 
+
 # %%
 data_clean
+
 
 
 # %%
@@ -680,6 +649,9 @@ data_clean
 clusters = K_means_model.fit_predict(X_emb)
 score = silhouette_score(X_emb, clusters)
 print(f"Silhouette Score for k=3: {score:.4f}")
+
+
+
 
 
 
