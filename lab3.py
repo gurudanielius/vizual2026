@@ -2,79 +2,77 @@
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
-
-
-
+from sklearn.preprocessing import RobustScaler
 
 
 # %%
 data_raw = pd.read_csv('Elektrines_duomenys_2023-2024m.csv', sep=';', decimal=',')
 data_selected_features= data_raw[["timestamp"] + [f"Total_active_power_INV-{i}" for i in range(1, 9)]]
-
-
-inv_cols = [f"Total_active_power_INV-{i}" for i in range(1, 9)]
-mask_all_empty = data_selected_features[inv_cols].fillna(0).eq(0).all(axis=1)
-data_selected_features = data_selected_features.loc[~mask_all_empty]
+inv_cols = [c for c in data_selected_features.columns if c != "timestamp"]
+data_selected_features["timestamp"] = pd.to_datetime(data_selected_features["timestamp"])
 data_selected_features
-data_raw= data_selected_features
-
-
 
 # %%
-#sum across rows
+mask_all_na = data_selected_features[inv_cols].isna().all(axis=1)
+all_empty=data_selected_features[mask_all_na]
+all_empty["day"] = all_empty["timestamp"].dt.date
+all_empty = all_empty[(all_empty["timestamp"].dt.hour >= 2) & (all_empty["timestamp"].dt.hour < 19)]
+all_empty["count_per_day"] = all_empty.groupby("day")["timestamp"].transform("size")
+all_empty
+
+# %% [markdown]
+# Inverteris 2024 metais išsijungia random nuo 19:00 iki 02:00, todėl stebėjome keistumus, bet čia problemų yra ir kitų - skaityk duomenų kiekis atitinkantis 17 dienų yra tušti;
+
+# %%
+data_selected_features=data_selected_features[data_selected_features["timestamp"].dt.year == 2023]
+
+# %% [markdown]
+# <span style="color: rgb(244, 12, 105);"> Daug geriau yra su praleistomis reikšmėmis -- čia yra tik viena diena kur visi inverteriai, jei imame tik 2023 metus, čia problema yra tik su 3 inverteriu, NA reikšmes čia užpildydami vidurkiu visai gerą aproksimacija gaunasi mano galva;
+
+# %%
+mask_all_na_2023 = data_selected_features[inv_cols].isna().all(axis=1)
+all_empty_2023=data_selected_features[mask_all_na_2023]
+all_empty_2023
+
+# %%
+data_raw = data_selected_features[~mask_all_na_2023]
+data_raw
+
+# %% [markdown]
+# Turime su 3 inverteriu daug praleistų reikšmelių (56 dienas) siūlau trinti, kol kas užpildau vidurkiu pagal eilutes
+
+# %%
+data_raw[inv_cols] = data_raw[inv_cols].apply(lambda row: row.fillna(row.mean()), axis=1)
+data_raw
+
+# %%
 data_raw["Total_active_power"] = data_raw[[f"Total_active_power_INV-{i}" for i in range(1, 9)]].sum(axis=1)
-data_final = data_raw[["timestamp", "Total_active_power"]].copy()
-data_final["timestamp"] = pd.to_datetime(data_final["timestamp"], errors="coerce")
-data_final = data_final.dropna(subset=["timestamp"])
-
-
-
-
-
-
-
+data_summed= data_raw[["timestamp", "Total_active_power"]]
+data_summed
 
 # %%
-data_final.isna().sum()
-
-
-
-
+data_summed.isna().sum()
 
 # %%
-data_final
-
-
-
-
-
-# %%
-
-# Convert data_final to wide format: Day + one column per hourly timestamp
-data_final["Day"] = data_final["timestamp"].dt.date
-data_final["Hour"] = data_final["timestamp"].dt.floor("H").dt.strftime("%H:%M")
-
-# If there are duplicate hourly timestamps for a day, keep the summed value
+data_summed["Day"] = data_summed["timestamp"].dt.date
+data_summed["Hour"] = data_summed["timestamp"].dt.floor("h").dt.strftime("%H:%M")
+data_summed=data_summed[(data_summed["Hour"] <= "19:00") & (data_summed["Hour"] >= "01:00")]
 sum_of_inv = (
-    data_final.groupby(["Day", "Hour"], as_index=False)["Total_active_power"]
+    data_summed.groupby(["Day", "Hour"], as_index=False)["Total_active_power"]
     .sum()
 )
 sum_of_inv_wide = sum_of_inv.pivot(index="Day", columns="Hour", values="Total_active_power")
-sum_of_inv_wide.columns.name = None  # Remove index name
+sum_of_inv_wide.columns.name = None  
 sum_of_inv_wide = sum_of_inv_wide.reset_index()
 
 final_dataset = sum_of_inv_wide[["Day"] + sorted(sum_of_inv_wide.columns[1:])]
-final_dataset
-
-
-
+data_summed
 
 # %%
-final_dataset["Day"] = pd.to_datetime(final_dataset["Day"], errors="coerce").dt.date
 final_dataset["month"] = pd.to_datetime(final_dataset["Day"]).dt.month
 
-
-
+# %%
+final_dataset
 
 # %%
 season_map = {
@@ -86,174 +84,184 @@ season_map = {
 
 final_dataset["season"] = final_dataset["month"].map(season_map)
 
-
-
 # %%
 season_order = ["Winter", "Spring", "Summer", "Autumn"]
+season_colors = ["#4C78A8", "#59A14F", "#F28E2B", "#9C755F"]
+
 id_cols = ["Day", "month", "season"]
 value_cols = [c for c in final_dataset.columns if c not in id_cols]
 
-melted = final_dataset.melt(
+final_dataset_melted = final_dataset.melt(
     id_vars=id_cols,
     value_vars=value_cols,
     var_name="time",
     value_name="power"
-).dropna(subset=["power", "season"])
+)
 
-# Collect values per season for boxplot
 data_by_season = [
-    melted.loc[melted["season"] == s, "power"].values
+    final_dataset_melted.loc[final_dataset_melted["season"] == s, "power"].values
     for s in season_order
 ]
+sezonai=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
 
 plt.figure(figsize=(10, 6))
-plt.boxplot(
+bp = plt.boxplot(
     data_by_season,
-    labels=season_order
+    labels=sezonai,
+    patch_artist=True,
+    medianprops={"color": "black", "linewidth": 1.4},
+    boxprops={"linewidth": 1.2},
+    whiskerprops={"linewidth": 1.2},
+    capprops={"linewidth": 1.2}
 )
-plt.title("Power Distribution by Season")
-plt.xlabel("Season")
-plt.ylabel("Power")
+
+for box, color in zip(bp["boxes"], season_colors):
+    box.set_facecolor(color)
+
+plt.title("Galios pasiskirstymas pagal sezoną")
+plt.xlabel("Sezonas")
+plt.ylabel("Galia")
 plt.tight_layout()
 plt.show()
 
+# %%
+# threshold = 60000
+# final_dataset = final_dataset.fillna(0)
+# num_cols = final_dataset.select_dtypes(include="number").columns
+# final_data = final_dataset[(final_dataset[num_cols] <= threshold).all(axis=1)]
+# final_data
 
+# %%
+# print(len(final_dataset), len(final_data)) #istrintos keturios eilutes
+
+# %%
+# # Melt the dataset so all timestamp columns become rows
+# timestamp_cols = [col for col in final_data.columns if col not in ['Day', 'season']]
+
+# melted = final_data.melt(id_vars=['Day', 'season'], 
+#                          value_vars=timestamp_cols, 
+#                          var_name='timestamp', 
+#                          value_name='value')
 
 
 # %%
-threshold = 60000
-
-final_dataset = final_dataset.fillna(0)
-
-num_cols = final_dataset.select_dtypes(include="number").columns
-final_data = final_dataset[(final_dataset[num_cols] <= threshold).all(axis=1)]
-
-final_data
-
-
-
-# %%
-print(len(final_dataset), len(final_data)) #istrintos keturios eilutes
-
-
-
-# %%
-# Melt the dataset so all timestamp columns become rows
-timestamp_cols = [col for col in final_data.columns if col not in ['Day', 'season']]
-
-melted = final_data.melt(id_vars=['Day', 'season'], 
-                         value_vars=timestamp_cols, 
-                         var_name='timestamp', 
-                         value_name='value')
-
-
-
-# %%
-# choose source table (final_data if you filtered out extreme rows, otherwise final_dataset)
-df = final_data.copy()  # or: final_dataset.copy()
-
-id_cols = ["Day", "month", "season"]
-value_cols = [c for c in df.columns if c not in id_cols]
-
-# melt wide -> long
-melted = df.melt(
-    id_vars=id_cols,
-    value_vars=value_cols,
-    var_name="timestamp",
-    value_name="value"
-).dropna(subset=["season", "value"])
-
-# make time sortable
-melted["time_dt"] = pd.to_datetime(melted["timestamp"], format="%H:%M", errors="coerce")
-
-# average profile per season across all days
+final_dataset_melted["time_dt"] = pd.to_datetime(final_dataset_melted["time"], format="%H:%M", errors="coerce")
 line_df = (
-    melted.groupby(["season", "timestamp", "time_dt"], as_index=False)["value"]
+    final_dataset_melted
+    .groupby(["season", "time", "time_dt"], as_index=False)["power"]
     .sum()
     .sort_values("time_dt")
 )
-
+season_labels_lt = {
+    "Winter": "Žiema",
+    "Spring": "Pavasaris",
+    "Summer": "Vasara",
+    "Autumn": "Ruduo",
+}
 season_order = ["Winter", "Spring", "Summer", "Autumn"]
-
 plt.figure(figsize=(12, 6))
 for s in season_order:
     part = line_df[line_df["season"] == s]
-    plt.plot(part["timestamp"], part["value"], label=s, linewidth=1.8)
-
-plt.title("Daily Power Curve by Season")
-plt.xlabel("Time of day")
-plt.ylabel("Power")
-plt.xticks(ticks=range(0, len(part["timestamp"]), 12), rotation=45, ha="right")  # every 1 hour if 5-min data
+    plt.plot(
+        part["time"],
+        part["power"],
+        label=season_labels_lt.get(s, s),
+        linewidth=1.8
+    )
+plt.title("Galios generavimas pagal laiką ir sezoną")
+plt.xlabel("Laikas")
+plt.ylabel("Galia")
+plt.xticks(ticks=range(0, len(part["time"])), rotation=45, ha="right") 
 plt.legend()
 plt.tight_layout()
 plt.show()
 
 
 
+
+# %% [markdown]
+# Patriminau laiką;
+
+# %%
+print(final_dataset.head())
+print("#" * 50)
+print(final_dataset_melted.head())
+
 # %%
 id_cols = ["Day", "month", "season"]
-
-# pick whichever table you want to trim
-df = final_data.copy()   # or final_dataset.copy()
-
-time_cols = [c for c in df.columns if c not in id_cols]
-time_dt = pd.to_datetime(time_cols, format="%H:%M", errors="coerce")
-
-keep_time_cols = [
-    c for c, t in zip(time_cols, time_dt)
-    if pd.notna(t) and (t.hour * 60 + t.minute >= 2 * 60) and (t.hour * 60 + t.minute <= 19 * 60)
-]
-
-data_clean = df[id_cols + keep_time_cols]
-data_clean
-
-from sklearn.preprocessing import RobustScaler
-
-id_cols = ["Day", "month", "season"]
-value_cols = [c for c in data_clean.columns if c not in id_cols]
-
+value_cols = [c for c in final_dataset.columns if c not in id_cols]
 scaler = RobustScaler()
-scaled_values = scaler.fit_transform(data_clean[value_cols])
-
-# Sudėti atgal į DataFrame su originalia struktūra
-df_scaled = pd.DataFrame(scaled_values, columns=value_cols)
-df_scaled[id_cols] = data_clean[id_cols].reset_index(drop=True)
-
-df_scaled
-
-# %%
-season_order = ["Winter", "Spring", "Summer", "Autumn"]
-id_cols = ["Day", "month", "season"]
-value_cols = [c for c in data_clean.columns if c not in id_cols]
-
-season_labels_lt = {
-    "Winter": "Žiema",
-    "Spring": "Pavasaris",
-    "Summer": "Vasara",
-    "Autumn": "Ruduo"
-}
-
-melted = data_clean.melt(
+final_dataset_scaled = final_dataset.copy()
+final_dataset_scaled[value_cols] = scaler.fit_transform(final_dataset[value_cols])
+final_dataset_melted_scaled = final_dataset_scaled.melt(
     id_vars=id_cols,
     value_vars=value_cols,
     var_name="time",
     value_name="power"
-).dropna(subset=["power", "season"])
+)
 
-# Collect values per season for boxplot
+# %%
+final_dataset_scaled
+
+# %%
+final_dataset_melted_scaled
+
+# %%
 data_by_season = [
-    melted.loc[melted["season"] == s, "power"].values
+    final_dataset_melted_scaled.loc[final_dataset_melted_scaled["season"] == s, "power"].values
     for s in season_order
 ]
+sezonai=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
 
 plt.figure(figsize=(10, 6))
-plt.boxplot(
+bp = plt.boxplot(
     data_by_season,
-    labels=[season_labels_lt.get(s, s) for s in season_order]
+    labels=sezonai,
+    patch_artist=True,
+    medianprops={"color": "black", "linewidth": 1.4},
+    boxprops={"linewidth": 1.2},
+    whiskerprops={"linewidth": 1.2},
+    capprops={"linewidth": 1.2}
 )
-plt.title("Metų laikų stačiakampės diagramos")
-plt.xlabel("Metų laikas")
-plt.ylabel("Elektros energijos kiekis")
+
+for box, color in zip(bp["boxes"], season_colors):
+    box.set_facecolor(color)
+
+plt.title("Galios pasiskirstymas pagal sezoną")
+plt.xlabel("Sezonas")
+plt.ylabel("Galia")
+plt.tight_layout()
+plt.show()
+
+# %%
+final_dataset_melted_scaled["time_dt"] = pd.to_datetime(final_dataset_melted_scaled["time"], format="%H:%M", errors="coerce")
+line_df = (
+    final_dataset_melted_scaled	
+    .groupby(["season", "time", "time_dt"], as_index=False)["power"]
+    .sum()
+    .sort_values("time_dt")
+)
+season_labels_lt = {
+    "Winter": "Žiema",
+    "Spring": "Pavasaris",
+    "Summer": "Vasara",
+    "Autumn": "Ruduo",
+}
+season_order = ["Winter", "Spring", "Summer", "Autumn"]
+plt.figure(figsize=(12, 6))
+for s in season_order:
+    part = line_df[line_df["season"] == s]
+    plt.plot(
+        part["time"],
+        part["power"],
+        label=season_labels_lt.get(s, s),
+        linewidth=1.8
+    )
+plt.title("Galios generavimas pagal laiką ir sezoną")
+plt.xlabel("Laikas")
+plt.ylabel("Galia")
+plt.xticks(ticks=range(0, len(part["time"])), rotation=45, ha="right") 
+plt.legend()
 plt.tight_layout()
 plt.show()
 
@@ -261,22 +269,14 @@ plt.show()
 
 
 # %%
-timestamp_cols = [col for col in data_clean.columns if col not in ['Day', 'season']]
+final_dataset_melted
 
-melted = data_clean.melt(id_vars=['Day', 'season'], 
-                         value_vars=timestamp_cols, 
-                         var_name='timestamp', 
-                         value_name='value')
-
-print(melted.groupby("season").describe())
-
+# %%
+print(final_dataset_melted[["power","season"]].groupby("season").describe())
 
 
 # %%
-season_stats = melted.groupby('season')['value'].describe().round(4)
-
-print(season_stats)
-
+print(final_dataset_melted_scaled[["power","season"]].groupby("season").describe())
 
 
 # %%
@@ -288,6 +288,7 @@ max_val = num.loc[row_idx, col_name]
 max_day = winter_data.loc[row_idx, "Day"]
 
 max_day, col_name, max_val
+
 
 
 
@@ -340,9 +341,6 @@ plt.show()
 
 
 
-# %%
-
-
 
 # %%
 #PCA
@@ -390,9 +388,6 @@ plt.show()
 print('Explained variance ratio:', np.round(pca_model.explained_variance_ratio_, 4))
 
 
-# %%
-
-
 
 # %%
 from sklearn.manifold import trustworthiness
@@ -413,9 +408,6 @@ stress = np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
 print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}")
-
-
-# %%
 
 
 
@@ -469,9 +461,6 @@ stress = np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
 print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}")
-
-
-# %%
 
 
 
@@ -531,9 +520,6 @@ for res in results:
     print(res)
 
 
-# %%
-
-
 
 # %%
 from sklearn.manifold import MDS, trustworthiness
@@ -585,6 +571,7 @@ c = trustworthiness(X_emb, X, n_neighbors=10)
 print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {mds.stress_:.4f}")
+
 
 
 # %%
@@ -641,8 +628,10 @@ for res in results:
     print(res)
 
 
+
 # %%
 data_clean
+
 
 # %%
 from sklearn.cluster  import KMeans
@@ -669,6 +658,7 @@ plt.title("Elbow Method")
 plt.grid(True)
 plt.show()
 
+
 # %%
 #k = 3
 
@@ -680,13 +670,18 @@ data_clean["cluster"] = clusters
 score = silhouette_score(X_scaled, clusters)
 print(f"Silhouette Score for k=3: {score:.4f}")
 
+
 # %%
 data_clean
+
 
 # %%
 
 clusters = K_means_model.fit_predict(X_emb)
 score = silhouette_score(X_emb, clusters)
 print(f"Silhouette Score for k=3: {score:.4f}")
+
+
+
 
 
