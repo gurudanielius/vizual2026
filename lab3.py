@@ -534,30 +534,30 @@ print(f"Stress: {stress:.4f}")
 # 
 
 # %%
-# def tsne_grid_search(X, param_grid, n_neighbors=10, random_state=42):
-#     grid = ParameterGrid(param_grid)
-#     results = []
-#     for params in grid:
-#         tsne = TSNE(n_components=2, random_state=random_state, max_iter=1000, **params)
-#         try:
-#             X_emb_pca = tsne.fit_transform(X)
-#             t = trustworthiness(X, X_emb_pca, n_neighbors=n_neighbors)
-#             c = trustworthiness(X_emb_pca, X, n_neighbors=n_neighbors)
-#             stress = normalized_stress(X.values, X_emb_pca)
-#             results.append({
-#                 'params': params,
-#                 'trustworthiness': t,
-#                 'continuity': c,
-#                 'stress': stress,
-#             })
-#         except Exception as e:
-#             print(f"Error with params {params}: {e}")
-#             continue
-#     return results
-# param_grid = {'perplexity': [5, 15, 20, 30, 50], 'learning_rate': [10, 20, 30, 50, 100]}
-# results = tsne_grid_search(X, param_grid)
-# for res in results:
-#     print(res)
+def tsne_grid_search(X, n=2, param_grid=None, n_neighbors=10, random_state=42):
+    grid = ParameterGrid(param_grid)
+    results = []
+    for params in grid:
+        tsne = TSNE(n_components=n, random_state=random_state, max_iter=1000, **params)
+        try:
+            X_emb_pca = tsne.fit_transform(X)
+            t = trustworthiness(X, X_emb_pca, n_neighbors=n_neighbors)
+            c = trustworthiness(X_emb_pca, X, n_neighbors=n_neighbors)
+            stress = normalized_stress(X.values, X_emb_pca)
+            results.append({
+                'params': params,
+                'trustworthiness': t,
+                'continuity': c,
+                'stress': stress,
+            })
+        except Exception as e:
+            print(f"Error with params {params}: {e}")
+            continue
+    return results
+param_grid = {'perplexity': [5, 15, 20, 30, 50], 'learning_rate': [10, 20, 30, 50, 100]}
+results = tsne_grid_search(X, n=2, param_grid=param_grid)
+for res in results:
+    print(res)
 
 
 
@@ -1145,7 +1145,7 @@ plt.show()
 #   <h1> HIERARCHINIS </h1>
 
 # %%
-Z = linkage(X, method='ward')
+Z = linkage(X_emb_pca, method='ward')
 last = Z[-10:, 2]          
 acceleration = np.diff(last, 2)  
 k = acceleration[::-1].argmax() + 2 
@@ -1224,72 +1224,6 @@ plt.show()
 
 
 
-# %%
-stability_results = run_clustering_stability(
-    X_data=X_emb_pca,
-    method="hierarchical",         
-    strata_labels=final_dataset["season"],
-    param_values=range(2, 7),      
-    n_runs=50,
-    sample_fraction=0.8,
-    base_seed=80085,
-    linkage_method="ward"        
-)
-
-cluster_assignments_runs = stability_results["assignments"]
-k_run_metrics = stability_results["run_metrics"]
-ari_pairs = stability_results["ari_pairs"]
-stability_summary = stability_results["summary"]
-best_k = stability_results["best_k"]
-
-print("Stabilumo suvestinė pagal k (hierarchical):")
-stability_summary
-
-# %%
-# Vizualus k palyginimas: vidurkiai ir sklaida (std) su pažymėtu rekomenduotu best_k.
-fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
-
-axes[0].errorbar(
-    stability_summary["k"],
-    stability_summary["mean_silhouette"],
-    yerr=stability_summary["std_silhouette"],
-    fmt="o-",
-    capsize=4,
-)
-axes[0].axvline(best_k, color="red", linestyle="--", alpha=0.7)
-axes[0].set_title("Silhouette")
-axes[0].set_xlabel("k")
-axes[0].set_ylabel("Reikšmė")
-axes[0].grid(True, alpha=0.25)
-
-axes[1].errorbar(
-    stability_summary["k"],
-    stability_summary["mean_davies_bouldin"],
-    yerr=stability_summary["std_davies_bouldin"],
-    fmt="o-",
-    capsize=4,
-)
-axes[1].axvline(best_k, color="red", linestyle="--", alpha=0.7)
-axes[1].set_title("Davies-Bouldin")
-axes[1].set_xlabel("k")
-axes[1].grid(True, alpha=0.25)
-
-axes[2].errorbar(
-    stability_summary["k"],
-    stability_summary["mean_ari"],
-    yerr=stability_summary["std_ari"],
-    fmt="o-",
-    capsize=4,
-)
-axes[2].axvline(best_k, color="red", linestyle="--", alpha=0.7)
-axes[2].set_title("ARI")
-axes[2].set_xlabel("k")
-axes[2].grid(True, alpha=0.25)
-
-plt.suptitle(f"Hierarchical clustering stabilumo metrikos pagal k")  # <-- changed
-plt.tight_layout()
-plt.show()
-
 # %% [markdown]
 #   <h1> DBSCAN </h1>
 
@@ -1360,9 +1294,251 @@ plt.ylim(lim_min, lim_max)
 
 plt.show() #cia noise yra pilkai pavaizduoti
 
+# %% [markdown]
+# <h1> Dimensijos mažinimas iki 8 dimensijų </h1>
+
 # %%
-stability_results = run_clustering_stability(
-    X_data=X_emb_pca,
+pca_model = PCA(n_components=8, random_state=80085)
+pca_result = pca_model.fit_transform(X)
+t = trustworthiness(X.values, pca_result, n_neighbors=8)
+c = trustworthiness(pca_result, X.values, n_neighbors=8)
+
+D_orig = pairwise_distances(X.values)
+D_emb = pairwise_distances(X_emb_pca)
+stress = normalized_stress(X.values, X_emb_pca)
+
+print(f"Trustworthiness: {t:.4f}")
+print(f"Continuity: {c:.4f}")
+print(f"Stress: {stress:.4f}") # cia gauname labai geri rezultatai, todel kitu algoritmu netikriname, darome klasterizavima su PCA rezultatais
+
+# %%
+plt.figure(figsize=(10, 7))
+lims = [
+    min(np.floor(X_pca_df['PC1'].min()), np.floor(X_pca_df['PC2'].min())) - 1,
+    max(np.ceil(X_pca_df['PC1'].max()), np.ceil(X_pca_df['PC2'].max())) + 1
+]
+
+plt.xlim(lims)
+plt.ylim(lims)
+plt.gca().set_aspect('equal', adjustable='box')
+
+sns.scatterplot(
+    data=X_pca_df,
+    x='PC1',
+    y='PC2',
+    hue='season',
+    palette='husl',
+    s=75,
+    hue_order=['Winter', 'Spring', 'Summer', 'Autumn']
+)
+
+plt.title('PCA projekcija dienos energijos profiliams')
+plt.xlabel(f'PC1 ({pca_model.explained_variance_ratio_[0]*100:.2f}%)')
+plt.ylabel(f'PC2 ({pca_model.explained_variance_ratio_[1]*100:.2f}%)')
+plt.legend(title='Season', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+print('Explained variance ratio:', np.round(pca_model.explained_variance_ratio_, 4))
+
+# %%
+X_pca_df_8 = pd.DataFrame(pca_result, columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8'])
+X_pca_df_8['season'] = final_dataset_scaled['season'].values
+
+X_emb_pca_8 = X_pca_df_8[['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8']].values
+
+
+# %% [markdown]
+# <h2> K-means </h2>
+
+# %%
+inertias = []
+k_values = range(1, 11)
+
+for k in k_values:
+    km = KMeans(n_clusters=k, random_state=80085, n_init="auto")
+    km.fit(X_emb_pca_8)
+    inertias.append(km.inertia_)
+plt.figure(figsize=(8, 5))
+plt.plot(k_values, inertias, marker="o")
+plt.xlabel("Klusterių skaičius (k)")
+plt.ylabel("Inercija")
+plt.title("Alkūnės metodas (PCA su 8 komponentėmis)")
+plt.grid(True)
+plt.show()
+
+# %%
+K_means_model_8 = KMeans(n_clusters=2, random_state=80085, n_init="auto")
+clusters_8 = K_means_model_8.fit_predict(X_emb_pca_8)
+
+silhouette_score_8 = silhouette_score(X_emb_pca_8, clusters_8)
+print(f"Silhouette Score for k=2 (PCA 8 components): {silhouette_score_8:.4f}")
+davies_bouldin_score_8 = davies_bouldin_score(X_emb_pca_8, clusters_8)
+print(f"Davies-Bouldin Score for k=2 (PCA 8 components): {davies_bouldin_score_8:.4f}")
+
+# %%
+stability_results_8 = run_clustering_stability(
+    X_data=X_emb_pca_8,
+    method="kmeans",
+    strata_labels=final_dataset["season"],
+    param_values=range(2, 7),
+    n_runs=50,
+    sample_fraction=0.8,
+    base_seed=80085
+)
+
+cluster_assignments_runs = stability_results_8["assignments"]
+k_run_metrics = stability_results_8["run_metrics"]
+ari_pairs = stability_results_8["ari_pairs"]
+stability_summary = stability_results_8["summary"]
+best_k = stability_results_8["best_k"]
+
+print("Stabilumo suvestinė pagal k:")
+stability_summary
+
+# %%
+fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
+
+axes[0].errorbar(
+    stability_summary["k"],
+    stability_summary["mean_silhouette"],
+    yerr=stability_summary["std_silhouette"],
+    fmt="o-",
+    capsize=4,
+)
+axes[0].axvline(best_k, color="red", linestyle="--", alpha=0.7)
+axes[0].set_title("Silhouette")
+axes[0].set_xlabel("k")
+axes[0].set_ylabel("Reikšmė")
+axes[0].grid(True, alpha=0.25)
+
+axes[1].errorbar(
+    stability_summary["k"],
+    stability_summary["mean_davies_bouldin"],
+    yerr=stability_summary["std_davies_bouldin"],
+    fmt="o-",
+    capsize=4,
+)
+axes[1].axvline(best_k, color="red", linestyle="--", alpha=0.7)
+axes[1].set_title("Davies-Bouldin")
+axes[1].set_xlabel("k")
+axes[1].grid(True, alpha=0.25)
+
+axes[2].errorbar(
+    stability_summary["k"],
+    stability_summary["mean_ari"],
+    yerr=stability_summary["std_ari"],
+    fmt="o-",
+    capsize=4,
+)
+axes[2].axvline(best_k, color="red", linestyle="--", alpha=0.7)
+axes[2].set_title("ARI")
+axes[2].set_xlabel("k")
+axes[2].grid(True, alpha=0.25)
+
+plt.suptitle(f"KMeans stabilumo metrikos pagal k")
+plt.tight_layout()
+plt.show()
+
+
+# %% [markdown]
+# <h2> Hierarchinis </h2>
+
+# %%
+Z = linkage(X_emb_pca_8, method='ward')
+last = Z[-10:, 2]          
+acceleration = np.diff(last, 2)  
+k = acceleration[::-1].argmax() + 2 
+
+print(f"Suggested k: {k}")
+plt.figure(figsize=(10, 5))
+dendrogram(Z)
+plt.title("")
+plt.xticks([])
+plt.show()
+
+# %%
+hierarchical_model_8 = AgglomerativeClustering(n_clusters=2, linkage='ward')
+hierarchical_clusters_8 = hierarchical_model.fit_predict(X_emb_pca_8)
+
+hierarchical_results_8 = final_dataset[["Day", "season"]].copy()
+hierarchical_results_8["hierarchical_cluster"] = hierarchical_clusters_8
+hierarchical_score_silhouette_8 = silhouette_score(X_emb_pca_8, hierarchical_clusters_8)
+hierarchical_score_davies_bouldin_8 = davies_bouldin_score(X_emb_pca_8, hierarchical_clusters_8)
+print(f"Silhouette Score Hierarchical Model for k=2: {hierarchical_score_silhouette_8:.4f}")
+print(f"Davies-Bouldin Score Hierarchical Model for k=2: {hierarchical_score_davies_bouldin_8:.4f}")
+
+# %%
+stability_results_8 = run_clustering_stability(
+    X_data=X_emb_pca_8,
+    method="hierarchical",         
+    strata_labels=final_dataset["season"],
+    param_values=range(2, 7),      
+    n_runs=50,
+    sample_fraction=0.8,
+    base_seed=80085,
+    linkage_method="ward"        
+)
+
+cluster_assignments_runs = stability_results_8["assignments"]
+k_run_metrics = stability_results_8["run_metrics"]
+ari_pairs = stability_results_8["ari_pairs"]
+stability_summary= stability_results_8["summary"]
+best_k = stability_results_8["best_k"]
+
+print("Stabilumo suvestinė pagal k (hierarchical):")
+stability_summary
+
+# %%
+fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
+
+axes[0].errorbar(
+    stability_summary["k"],
+    stability_summary["mean_silhouette"],
+    yerr=stability_summary["std_silhouette"],
+    fmt="o-",
+    capsize=4,
+)
+axes[0].axvline(best_k, color="red", linestyle="--", alpha=0.7)
+axes[0].set_title("Silhouette")
+axes[0].set_xlabel("k")
+axes[0].set_ylabel("Reikšmė")
+axes[0].grid(True, alpha=0.25)
+
+axes[1].errorbar(
+    stability_summary["k"],
+    stability_summary["mean_davies_bouldin"],
+    yerr=stability_summary["std_davies_bouldin"],
+    fmt="o-",
+    capsize=4,
+)
+axes[1].axvline(best_k, color="red", linestyle="--", alpha=0.7)
+axes[1].set_title("Davies-Bouldin")
+axes[1].set_xlabel("k")
+axes[1].grid(True, alpha=0.25)
+
+axes[2].errorbar(
+    stability_summary["k"],
+    stability_summary["mean_ari"],
+    yerr=stability_summary["std_ari"],
+    fmt="o-",
+    capsize=4,
+)
+axes[2].axvline(best_k, color="red", linestyle="--", alpha=0.7)
+axes[2].set_title("ARI")
+axes[2].set_xlabel("k")
+axes[2].grid(True, alpha=0.25)
+
+plt.suptitle(f"Hierarchical clustering stabilumo metrikos pagal k")  # <-- changed
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# <h2> BDSCAN </h2>
+
+# %%
+stability_results_8 = run_clustering_stability(
+    X_data=X_emb_pca_8,
     method="dbscan",
     strata_labels=final_dataset["season"], 
     param_values=np.round(np.linspace(1.8, 2.2, 5), 2),
@@ -1373,17 +1549,16 @@ stability_results = run_clustering_stability(
     max_noise_fraction=0.5
 )
 
-cluster_assignments_runs = stability_results["assignments"]
-dbscan_run_metrics = stability_results["run_metrics"]
-ari_pairs = stability_results["ari_pairs"]
-stability_summary = stability_results["summary"]
-best_eps = stability_results["best_eps"]
+cluster_assignments_runs = stability_results_8["assignments"]
+dbscan_run_metrics = stability_results_8["run_metrics"]
+ari_pairs = stability_results_8["ari_pairs"]
+stability_summary = stability_results_8["summary"]
+best_eps = stability_results_8["best_eps"]
 
 print("Stabilumo suvestinė pagal eps (DBSCAN):")
 stability_summary
 
 # %%
-# Vizualus eps palyginimas: vidurkiai ir sklaida (std) su pažymėtu best_eps
 fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
 
 axes[0].errorbar(
@@ -1426,5 +1601,27 @@ axes[2].grid(True, alpha=0.25)
 plt.suptitle("DBSCAN stabilumo metrikos pagal eps")
 plt.tight_layout()
 plt.show()
+
+# %%
+dbscan_model_8 = DBSCAN(eps=2.1, min_samples=5)
+dbscan_clusters_8 = dbscan_model_8.fit_predict(X_emb_pca_8)
+
+# %%
+dbscan_results_8 = final_dataset[["Day", "season"]].copy()
+dbscan_results_8["dbscan_cluster"] = dbscan_clusters_8
+
+mask = dbscan_clusters_8 != -1
+
+if len(set(dbscan_clusters_8[mask])) > 1:
+    silhouette = silhouette_score(X_emb_pca_8[mask], dbscan_clusters_8[mask])
+    db_index = davies_bouldin_score(X_emb_pca_8[mask], dbscan_clusters_8[mask])
+else:
+    silhouette = np.nan
+    db_index = np.nan
+
+print(f"Silhouette Score DBSCAN: {silhouette:.4f}")
+print(f"Davies-Bouldin Score DBSCAN: {db_index:.4f}")
+print(f"Number of clusters: {len(set(dbscan_clusters_8)) - (1 if -1 in dbscan_clusters_8 else 0)}")
+print(f"Noise points: {(dbscan_clusters_8 == -1).sum()}")
 
 
