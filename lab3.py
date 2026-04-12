@@ -12,6 +12,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import MDS, TSNE, trustworthiness
 from sklearn.metrics import (
     adjusted_rand_score,
+    calinski_harabasz_score,
     davies_bouldin_score,
     pairwise_distances,
     silhouette_score,
@@ -973,9 +974,11 @@ def run_clustering_stability(
             except: sil = np.nan
             try:    db  = davies_bouldin_score(X_score, l_score) if valid else np.nan
             except: db  = np.nan
+            try:    ch  = calinski_harabasz_score(X_score, l_score) if valid else np.nan
+            except: ch  = np.nan
 
             all_assignments.append(pd.DataFrame({param_key: param, "seed": run_seed, "row_id": row_ids_run, "cluster": labels}))
-            all_run_metrics.append({param_key: param, "seed": run_seed, "silhouette": sil, "davies_bouldin": db, "n_clusters": n_clusters, "n_noise": n_noise})
+            all_run_metrics.append({param_key: param, "seed": run_seed, "silhouette": sil, "davies_bouldin": db, "calinski_harabasz": ch, "n_clusters": n_clusters, "n_noise": n_noise})
             run_label_maps.append(dict(zip(row_ids_run, labels)))
             run_row_sets.append(set(row_ids_run))
 
@@ -997,14 +1000,16 @@ def run_clustering_stability(
             "std_silhouette":      np.nanstd(m["silhouette"], ddof=1),
             "mean_davies_bouldin": np.nanmean(m["davies_bouldin"]),
             "std_davies_bouldin":  np.nanstd(m["davies_bouldin"], ddof=1),
+            "mean_calinski_harabasz": np.nanmean(m["calinski_harabasz"]),
+            "std_calinski_harabasz":  np.nanstd(m["calinski_harabasz"], ddof=1),
             "mean_ari":            np.nanmean(ari_arr) if len(ari_arr) else np.nan,
             "std_ari":             np.nanstd(ari_arr, ddof=1) if len(ari_arr) > 1 else np.nan,
         })
 
     summary_df = pd.DataFrame(summary_rows)
-    ranking = summary_df.dropna(subset=["mean_ari", "mean_silhouette"]).sort_values(
-        by=["mean_ari", "mean_silhouette", "mean_davies_bouldin", "std_ari", "std_silhouette", param_key],
-        ascending=[False, False, True, True, True, True],
+    ranking = summary_df.dropna(subset=["mean_ari", "mean_silhouette", "mean_calinski_harabasz"]).sort_values(
+        by=["mean_ari", "mean_silhouette", "mean_calinski_harabasz", "mean_davies_bouldin", "std_ari", "std_silhouette", param_key],
+        ascending=[False, False, False, True, True, True, True],
     ).reset_index(drop=True)
 
     best = ranking[param_key].iloc[0] if not ranking.empty else None
