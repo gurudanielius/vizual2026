@@ -1,6 +1,5 @@
 # %%
 from itertools import combinations
-
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -23,22 +22,12 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import RobustScaler, StandardScaler
 from kmedoids import KMedoids
 
-
-
-
 # %%
 data_raw = pd.read_csv('Elektrines_duomenys_2023-2024m.csv', sep=';', decimal=',')
 data_selected_features= data_raw[["timestamp"] + [f"Total_active_power_INV-{i}" for i in range(1, 9)]]
 inv_cols = [c for c in data_selected_features.columns if c != "timestamp"]
 data_selected_features["timestamp"] = pd.to_datetime(data_selected_features["timestamp"])
 data_selected_features
-
-
-
-
-
-
-
 
 # %%
 mask_all_na = data_selected_features[inv_cols].isna().all(axis=1)
@@ -48,70 +37,38 @@ all_empty = all_empty[(all_empty["timestamp"].dt.hour >= 2) & (all_empty["timest
 all_empty["count_per_day"] = all_empty.groupby("day")["timestamp"].transform("size")
 all_empty
 
-
-
-
-
-
-
-
 # %% [markdown]
-#        Inverteris 2024 metais išsijungia random nuo 19:00 iki 02:00, todėl stebėjome keistumus, bet čia problemų yra ir kitų - skaityk duomenų kiekis atitinkantis 17 dienų yra tušti;
+#         Inverteris 2024 metais išsijungia random nuo 19:00 iki 02:00, todėl stebėjome keistumus, bet čia problemų yra ir kitų - skaityk duomenų kiekis atitinkantis 17 dienų yra tušti;
 
 # %%
 data_selected_features=data_selected_features[data_selected_features["timestamp"].dt.year == 2023]
 
-
-
-
-
-
-
-
 # %% [markdown]
-#     <span style="color: rgb(244, 12, 105);">  Daug geriau yra su praleistomis reikšmėmis -- čia yra tik viena diena kur visi inverteriai, jei imame tik 2023 metus, čia problema yra tik su 3 inverteriu, NA reikšmes čia užpildydami vidurkiu visai gerą aproksimacija gaunasi mano galva;
+#      <span style="color: rgb(244, 12, 105);">  Daug geriau yra su praleistomis reikšmėmis -- čia yra tik viena diena kur visi inverteriai, jei imame tik 2023 metus, čia problema yra tik su 3 inverteriu, NA reikšmes čia užpildydami vidurkiu visai gerą aproksimacija gaunasi mano galva;
 
 # %%
 mask_all_na_2023 = data_selected_features[inv_cols].isna().all(axis=1)
 all_empty_2023=data_selected_features[mask_all_na_2023]
 all_empty_2023
 
-
-
-
-
-
-
-
 # %%
 data_raw = data_selected_features[~mask_all_na_2023]
 data_raw
 
-
-
-
-
-
-
-
 # %% [markdown]
-#         Turime su 3 inverteriu daug praleistų reikšmelių (56 dienas) siūlau trinti, kol kas užpildau vidurkiu pagal eilutes
+#          Turime su 3 inverteriu daug praleistų reikšmelių (56 dienas) siūlau trinti, kol kas užpildau vidurkiu pagal eilutes
 
 # %%
 data_raw[inv_cols] = data_raw[inv_cols].apply(lambda row: row.fillna(row.mean()), axis=1)
 data_raw
-
 
 # %%
 data_raw["Total_active_power"] = data_raw[[f"Total_active_power_INV-{i}" for i in range(1, 9)]].sum(axis=1)
 data_summed= data_raw[["timestamp", "Total_active_power"]]
 data_summed
 
-
 # %%
 data_summed.isna().sum()
-
-
 
 # %%
 data_summed["Day"] = data_summed["timestamp"].dt.date
@@ -128,12 +85,8 @@ sum_of_inv_wide = sum_of_inv_wide.reset_index()
 final_dataset = sum_of_inv_wide[["Day"] + sorted(sum_of_inv_wide.columns[1:])]
 data_summed
 
-
-
 # %%
 final_dataset["month"] = pd.to_datetime(final_dataset["Day"]).dt.month
-
-
 
 # %%
 season_map = {
@@ -144,13 +97,6 @@ season_map = {
 }
 
 final_dataset["season"] = final_dataset["month"].map(season_map)
-
-
-
-
-
-
-
 
 # %%
 season_order = ["Winter", "Spring", "Summer", "Autumn"]
@@ -192,13 +138,6 @@ plt.ylabel("Galia")
 plt.tight_layout()
 plt.show()
 
-
-
-
-
-
-
-
 # %%
 final_dataset_melted["time_dt"] = pd.to_datetime(final_dataset_melted["time"], format="%H:%M", errors="coerce")
 line_df = (
@@ -231,30 +170,13 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-
-
-
-
-
-
-
-
-
-
 # %% [markdown]
-#         Patriminau laiką;
+#          Patriminau laiką;
 
 # %%
 print(final_dataset.head())
 print("#" * 50)
 print(final_dataset_melted.head())
-
-
-
-
-
-
-
 
 # %%
 id_cols = ["Day", "month", "season"]
@@ -269,32 +191,11 @@ final_dataset_melted_scaled = final_dataset_scaled.melt(
     value_name="power"
 )
 
-
-
-
-
-
-
-
 # %%
 final_dataset_scaled
 
-
-
-
-
-
-
-
 # %%
 final_dataset_melted_scaled
-
-
-
-
-
-
-
 
 # %%
 data_by_season = [
@@ -322,13 +223,6 @@ plt.xlabel("Sezonas")
 plt.ylabel("Galia")
 plt.tight_layout()
 plt.show()
-
-
-
-
-
-
-
 
 # %%
 final_dataset_melted_scaled["time_dt"] = pd.to_datetime(final_dataset_melted_scaled["time"], format="%H:%M", errors="coerce")
@@ -362,37 +256,11 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-
-
-
-
-
-
-
-
-
-
 # %%
 print(final_dataset_melted[["power","season"]].groupby("season").describe())
 
-
-
-
-
-
-
-
-
 # %%
 print(final_dataset_melted_scaled[["power","season"]].groupby("season").describe())
-
-
-
-
-
-
-
-
 
 # %%
 
@@ -429,14 +297,6 @@ plt.ylabel("Metų laikas")
 plt.tight_layout()
 plt.show()
 
-
-
-
-
-
-
-
-
 # %%
 
 heatmap_by_season_scaled = (
@@ -472,43 +332,21 @@ plt.ylabel("Metų laikas")
 plt.tight_layout()
 plt.show()
 
-
-
-
-
-
-
-
-
 # %%
 final_dataset
 id_cols
 
-
-
-
-
-
-
 # %%
 X = final_dataset_scaled.drop(columns=id_cols).select_dtypes(include='number')
 
-
-
-
-
-
-
-
 # %% [markdown]
-#       ### PCA
+#        ### PCA
 
 # %%
 pca_model = PCA(n_components=2, random_state=80085)
 pca_result = pca_model.fit_transform(X)
 X_pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
 X_pca_df['season'] = final_dataset_scaled['season'].values
-
 
 plt.figure(figsize=(10, 7))
 lims = [
@@ -539,26 +377,11 @@ plt.show()
 
 print('Explained variance ratio:', np.round(pca_model.explained_variance_ratio_, 4))
 
-
-
-
-
-
-
-
-
-
 # %%
 def normalized_stress(X, X_emb):
 	D_orig = pairwise_distances(X)
 	D_emb = pairwise_distances(X_emb)
 	return np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
-
-
-
-
-
-
 
 # %%
 X_emb_pca = X_pca_df[['PC1', 'PC2']].values
@@ -573,144 +396,8 @@ print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}")
 
-
-
-
-
-
-
-
 # %% [markdown]
-#        ### T-SNE
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-
+#         ### T-SNE
 # %%
 # def tsne_grid_search(X, n=2, param_grid=None, n_neighbors=10, random_state=42):
 #     grid = ParameterGrid(param_grid)
@@ -737,30 +424,11 @@ print(f"Stress: {stress:.4f}")
 # for res in results:
 #     print(res)
 
-
-
-
-
-
-
-
-
-
-
-
-
 # %%
 tsne = TSNE(n_components=2, random_state=42, perplexity=10, max_iter=1000)
 tsne_result = tsne.fit_transform(X)
 tsne_df = pd.DataFrame(tsne_result, columns=['TSNE1', 'TSNE2'])
 tsne_df['season'] = final_dataset_scaled['season'].values
-
-
-
-
-
-
-
 
 # %%
 plt.figure(figsize=(10, 7))
@@ -788,13 +456,6 @@ plt.legend(title='Season', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.show()
 
-
-
-
-
-
-
-
 # %%
 
 X_emb_tsne = tsne_df[['TSNE1', 'TSNE2']].values
@@ -810,17 +471,8 @@ print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}")
 
-
-
-
-
-
-
-
-
-
 # %% [markdown]
-#       ## MDS
+#        ## MDS
 
 # %%
 
@@ -851,23 +503,11 @@ print(f"Stress: {stress:.4f}")
 # for res in results:
 #     print(res)
 
-
-
-
-
-
-
 # %%
 mds = MDS(n_components=2, max_iter=1000, normalized_stress=True)
 mds_result = mds.fit_transform(X)
 mds_df = pd.DataFrame(mds_result, columns=['MDS1', 'MDS2'])
 mds_df['season'] = final_dataset_scaled['season'].values
-
-
-
-
-
-
 
 # %%
 
@@ -895,7 +535,6 @@ plt.title(f'MDS projekcija dienos energijos profiliams. Stress: {mds.stress_:.4f
 plt.legend(title='Season', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.show()
-
 
 # %%
 X_emb_MDS = mds_df[['MDS1', 'MDS2']].values
@@ -965,7 +604,6 @@ plt.legend(title='Season', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.show()
 
-
 # %%
 X_emb_UMAP = umap_df[['UMAP1', 'UMAP2']].values
 
@@ -976,16 +614,8 @@ print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {mds.stress_:.4f}")
 
-
-
-
-
-
-
-
-
 # %% [markdown]
-#  # Klasterizavimas
+#   # Klasterizavimas
 
 # %%
 def draw_clusters(X_emb, labels, title):
@@ -1013,11 +643,7 @@ def draw_clusters(X_emb, labels, title):
 	plt.tight_layout()
 	plt.show()
 
-
-
 # %%
-
-
 
 def stratified_sample_indices(strata_labels, sample_fraction, rng, min_total_size=None):
     strata_values = np.asarray(strata_labels)
@@ -1051,7 +677,6 @@ def stratified_sample_indices(strata_labels, sample_fraction, rng, min_total_siz
 
     return idx
 
-
 def stratified_sample_indices(strata_labels, sample_fraction, rng, min_total_size=None):
     strata_values = np.asarray(strata_labels)
     n_samples = len(strata_values)
@@ -1081,7 +706,6 @@ def stratified_sample_indices(strata_labels, sample_fraction, rng, min_total_siz
         idx = np.sort(rng.choice(idx, size=target_size, replace=False))
 
     return idx
-
 
 def run_clustering_stability(
     X_data,
@@ -1136,9 +760,11 @@ def run_clustering_stability(
             except: sil = np.nan
             try:    db  = davies_bouldin_score(X_score, l_score) if valid else np.nan
             except: db  = np.nan
+            try:    ch  = calinski_harabasz_score(X_score, l_score) if valid else np.nan
+            except: ch  = np.nan
 
             all_assignments.append(pd.DataFrame({param_key: param, "seed": run_seed, "row_id": row_ids_run, "cluster": labels}))
-            all_run_metrics.append({param_key: param, "seed": run_seed, "silhouette": sil, "davies_bouldin": db, "n_clusters": n_clusters, "n_noise": n_noise})
+            all_run_metrics.append({param_key: param, "seed": run_seed, "silhouette": sil, "davies_bouldin": db, "calinski_harabasz": ch, "n_clusters": n_clusters, "n_noise": n_noise})
             run_label_maps.append(dict(zip(row_ids_run, labels)))
             run_row_sets.append(set(row_ids_run))
 
@@ -1160,14 +786,16 @@ def run_clustering_stability(
             "std_silhouette":      np.nanstd(m["silhouette"], ddof=1),
             "mean_davies_bouldin": np.nanmean(m["davies_bouldin"]),
             "std_davies_bouldin":  np.nanstd(m["davies_bouldin"], ddof=1),
+            "mean_calinski_harabasz": np.nanmean(m["calinski_harabasz"]),
+            "std_calinski_harabasz":  np.nanstd(m["calinski_harabasz"], ddof=1),
             "mean_ari":            np.nanmean(ari_arr) if len(ari_arr) else np.nan,
             "std_ari":             np.nanstd(ari_arr, ddof=1) if len(ari_arr) > 1 else np.nan,
         })
 
     summary_df = pd.DataFrame(summary_rows)
-    ranking = summary_df.dropna(subset=["mean_ari", "mean_silhouette"]).sort_values(
-        by=["mean_ari", "mean_silhouette", "mean_davies_bouldin", "std_ari", "std_silhouette", param_key],
-        ascending=[False, False, True, True, True, True],
+    ranking = summary_df.dropna(subset=["mean_ari", "mean_silhouette", "mean_calinski_harabasz"]).sort_values(
+        by=["mean_ari", "mean_silhouette", "mean_calinski_harabasz", "mean_davies_bouldin", "std_ari", "std_silhouette", param_key],
+        ascending=[False, False, False, True, True, True, True],
     ).reset_index(drop=True)
 
     best = ranking[param_key].iloc[0] if not ranking.empty else None
@@ -1181,12 +809,8 @@ def run_clustering_stability(
         f"best_{param_key}": best,
     }
 
-
-
-
-
 # %% [markdown]
-#  # K-means
+#   # K-means
 
 # %%
 inertias = []
@@ -1194,7 +818,7 @@ k_values = range(1, 11)
 
 for k in k_values:
     km = KMeans(n_clusters=k, random_state=80085, n_init="auto")
-    km.fit(X_emb_pca)
+    km.fit(X_emb_UMAP)
     inertias.append(km.inertia_)
 plt.figure(figsize=(8, 5))
 plt.plot(k_values, inertias, marker="o")
@@ -1204,11 +828,9 @@ plt.title("Alkūnės metodas")
 plt.grid(True)
 plt.show()
 
-
-
 # %%
 stability_results = run_clustering_stability(
-    X_data=X_emb_pca,
+    X_data=X_emb_UMAP,
     method="kmeans",
     strata_labels=final_dataset["season"],
     param_values=range(2, 7),
@@ -1225,9 +847,6 @@ best_k = stability_results["best_k"]
 
 print("Stabilumo suvestinė pagal k:")
 stability_summary
-
-
-
 
 # %%
 # Vizualus k palyginimas: vidurkiai ir sklaida (std) su pažymėtu rekomenduotu best_k.
@@ -1265,7 +884,7 @@ axes[2].errorbar(
     fmt="o-",
     capsize=4,
 )
-axes[2].axvline(best_k, color="red", linestyle="--", alpha=0.7)
+axes[2].axvline(3, color="red", linestyle="--", alpha=0.7)
 axes[2].set_title("Calinski-Harabasz")
 axes[2].set_xlabel("k")
 axes[2].grid(True, alpha=0.25)
@@ -1274,30 +893,23 @@ plt.suptitle(f"K-Means stabilumo metrikos pagal k")
 plt.tight_layout()
 plt.show()
 
-
-
 # %%
-kmeans_model= KMeans(n_clusters=2, random_state=80085, n_init="auto").fit(X_emb_pca)
+kmeans_model= KMeans(n_clusters=3, random_state=80085, n_init="auto").fit(X_emb_UMAP)
 kmeans_labels = kmeans_model.labels_
-draw_clusters(X_emb_pca, kmeans_labels, f"KMeans klasterizacija su {2} klasteriais")
-
-
+draw_clusters(X_emb_UMAP, kmeans_labels, f"KMeans klasterizacija su {2} klasteriais")
 
 # %%
-kmeans_results= X_emb_pca.copy()
+kmeans_results= X_emb_UMAP.copy()
 kmeans_results = pd.DataFrame(kmeans_results, columns=['Dim1', 'Dim2'])
 kmeans_results['cluster'] = kmeans_labels
 kmeans_results['real_labels']= final_dataset_scaled['season'].values
 kmeans_results.head()
 
-
-
-
 # %% [markdown]
-#  <h1> HIERARCHINIS </h1>
+#   <h1> HIERARCHINIS </h1>
 
 # %%
-Z = linkage(X_emb_pca, method='single', metric='cityblock')
+Z = linkage(X_emb_UMAP, method='single', metric='cityblock')
 last = Z[-10:, 2]          
 acceleration = np.diff(last, 2)  
 k = acceleration[::-1].argmax() + 2 
@@ -1309,25 +921,14 @@ plt.title("")
 plt.xticks([])
 plt.show()
 
-
-
-
-
-
 # %%
 #Applying the model here now
 hierarchical_model = AgglomerativeClustering(n_clusters=2, linkage='single', metric='manhattan')
-hierarchical_clusters = hierarchical_model.fit_predict(X_emb_pca)
-
-
-
-
+hierarchical_clusters = hierarchical_model.fit_predict(X_emb_UMAP)
 
 # %%
 hierarchical_results = final_dataset[["Day", "season"]].copy()
 hierarchical_results["hierarchical_cluster"] = hierarchical_clusters
-
-
 
 # %%
 results = []
@@ -1339,7 +940,7 @@ for link in linkages:
     for metric in metrics:
         
         try:
-            Z = linkage(X_emb_pca, method=link, metric=metric)
+            Z = linkage(X_emb_UMAP, method=link, metric=metric)
             combo_name = f"{link}-{metric}"
             
             last = Z[-10:, 2]
@@ -1352,15 +953,15 @@ for link in linkages:
                 metric=metric
             )
             
-            labels = model.fit_predict(X_emb_pca)
+            labels = model.fit_predict(X_emb_UMAP)
             
             if len(np.unique(labels)) < 2:
                 results.append([combo_name, np.nan, np.nan, np.nan, np.nan])
                 continue
             
-            sil = silhouette_score(X_emb_pca, labels)
-            db = davies_bouldin_score(X_emb_pca, labels)
-            ck = calinski_harabasz_score(X_emb_pca, labels)
+            sil = silhouette_score(X_emb_UMAP, labels)
+            db = davies_bouldin_score(X_emb_UMAP, labels)
+            ck = calinski_harabasz_score(X_emb_UMAP, labels)
             
             results.append([combo_name, k, sil, db, ck])
         
@@ -1374,31 +975,25 @@ df_results = pd.DataFrame(results, columns=[
 
 print(df_results)
 
-
 # %%
 plt.figure(figsize=(8, 8))
-plt.scatter(X_emb_pca[:, 0], X_emb_pca[:, 1], c=hierarchical_clusters, cmap='Set1', s=50, alpha=0.7)
+plt.scatter(X_emb_UMAP[:, 0], X_emb_UMAP[:, 1], c=hierarchical_clusters, cmap='Set1', s=50, alpha=0.7)
 plt.title("Hierarchinio klasterizavimo rezultatai")
 
-lim_min = min(X_emb_pca[:, 0].min(), X_emb_pca[:, 1].min()) - 1
-lim_max = max(X_emb_pca[:, 0].max(), X_emb_pca[:, 1].max()) + 1
+lim_min = min(X_emb_UMAP[:, 0].min(), X_emb_UMAP[:, 1].min()) - 1
+lim_max = max(X_emb_UMAP[:, 0].max(), X_emb_UMAP[:, 1].max()) + 1
 plt.xlim(lim_min, lim_max)
 plt.ylim(lim_min, lim_max)
 
 plt.savefig("hierarchical_clusters.png", dpi=300, bbox_inches='tight')
 plt.show()
 
-
-
-
-
-
 # %% [markdown]
-#      <h1> DBSCAN </h1>
+#       <h1> DBSCAN </h1>
 
 # %%
 for eps in np.arange(0.1, 5.1, 0.1):
-    db = DBSCAN(eps=eps, min_samples=5).fit(X_emb_pca)
+    db = DBSCAN(eps=eps, min_samples=5).fit(X_emb_UMAP)
     labels = db.labels_
 
     mask = labels != -1
@@ -1406,18 +1001,23 @@ for eps in np.arange(0.1, 5.1, 0.1):
     n_noise = (labels == -1).sum()
 
     if n_clusters > 1 and mask.sum() > 1:
-        sil = silhouette_score(X_emb_pca[mask], labels[mask])
-        dbi = davies_bouldin_score(X_emb_pca[mask], labels[mask])
+        sil = silhouette_score(X_emb_UMAP[mask], labels[mask])
+        dbi = davies_bouldin_score(X_emb_UMAP[mask], labels[mask])
     else:
         sil, dbi = np.nan, np.nan
 
     print(f"eps={eps:.1f} → clusters={n_clusters}, noise={n_noise}, sil={sil:.3f}, db={dbi:.3f}")
 
-
-
-
 # %% [markdown]
-#    Geriausia silueta gavome:eps=2.1 → clusters=4, noise=52, sil=0.924, db=0.293
+#     Geriausia silueta gavome:eps=2.1 → clusters=4, noise=52, sil=0.924, db=0.293
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
 # 
 # 
 # 
@@ -1429,10 +1029,7 @@ for eps in np.arange(0.1, 5.1, 0.1):
 
 # %%
 dbscan_model = DBSCAN(eps=2.1, min_samples=5)
-dbscan_clusters = dbscan_model.fit_predict(X_emb_pca)
-
-
-
+dbscan_clusters = dbscan_model.fit_predict(X_emb_UMAP)
 
 # %%
 dbscan_results = final_dataset[["Day", "season"]].copy()
@@ -1441,8 +1038,8 @@ dbscan_results["dbscan_cluster"] = dbscan_clusters
 mask = dbscan_clusters != -1
 
 if len(set(dbscan_clusters[mask])) > 1:
-    silhouette = silhouette_score(X_emb_pca[mask], dbscan_clusters[mask])
-    db_index = davies_bouldin_score(X_emb_pca[mask], dbscan_clusters[mask])
+    silhouette = silhouette_score(X_emb_UMAP[mask], dbscan_clusters[mask])
+    db_index = davies_bouldin_score(X_emb_UMAP[mask], dbscan_clusters[mask])
 else:
     silhouette = np.nan
     db_index = np.nan
@@ -1452,9 +1049,6 @@ print(f"Davies-Bouldin Score DBSCAN: {db_index:.4f}")
 print(f"Number of clusters: {len(set(dbscan_clusters)) - (1 if -1 in dbscan_clusters else 0)}")
 print(f"Noise points: {(dbscan_clusters == -1).sum()}")
 
-
-
-
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1462,8 +1056,8 @@ import numpy as np
 plt.figure(figsize=(8, 8))
 
 plt.scatter(
-    X_emb_pca[:, 0],
-    X_emb_pca[:, 1],
+    X_emb_UMAP[:, 0],
+    X_emb_UMAP[:, 1],
     c=dbscan_clusters,
     cmap='Set1',
     s=50,
@@ -1472,22 +1066,19 @@ plt.scatter(
 
 plt.title("DBSCAN klasterizavimo rezultatai (eps=2.1)")
 
-lim_min = min(X_emb_pca[:, 0].min(), X_emb_pca[:, 1].min()) - 1
-lim_max = max(X_emb_pca[:, 0].max(), X_emb_pca[:, 1].max()) + 1
+lim_min = min(X_emb_UMAP[:, 0].min(), X_emb_UMAP[:, 1].min()) - 1
+lim_max = max(X_emb_UMAP[:, 0].max(), X_emb_UMAP[:, 1].max()) + 1
 plt.xlim(lim_min, lim_max)
 plt.ylim(lim_min, lim_max)
 
 plt.show() #cia noise yra pilkai pavaizduoti
 
-
-
-
 # %% [markdown]
-#   # Kmedoids
+#    # Kmedoids
 
 # %%
 stability_kmedoids = run_clustering_stability(
-	X_data=X_emb_pca,
+	X_data=X_emb_UMAP,
 	method="kmedoids",
 	strata_labels=final_dataset["season"],
 	param_values=range(2, 7),
@@ -1499,14 +1090,10 @@ stability_kmedoids_summary = stability_kmedoids["summary"]
 best_kmedoids_k = stability_kmedoids["best_k"]
 stability_kmedoids_summary
 
-
-
 # %%
 stability_kmedoids_summary = stability_kmedoids["summary"]
 best_kmedoids_k = stability_kmedoids["best_k"]
 stability_kmedoids_summary
-
-
 
 # %%
 fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
@@ -1539,7 +1126,7 @@ axes[2].errorbar(
 	fmt="o-",
 	capsize=4,
 )
-axes[2].axvline(best_kmedoids_k, color="red", linestyle="--", alpha=0.7)
+axes[2].axvline(3, color="red", linestyle="--", alpha=0.7)
 axes[2].set_title("Calinski-Harabasz")
 axes[2].set_xlabel("k")
 axes[2].grid(True, alpha=0.25)
@@ -1547,29 +1134,22 @@ plt.suptitle("K-Medoids vidinių matų rodikliai pagal k")
 plt.tight_layout()
 plt.show()
 
-
-
 # %%
-draw_clusters(X_emb_pca, kmedoids_labels, f"KMedoids klasterizacija su {2} klasteriais")
-
-
-
-# %%
-distances_emb=euclidean_distances(X_emb_pca)
-kmedoids_model= KMedoids(n_clusters=2, random_state=80085, method="fasterpam").fit(distances_emb)
+distances_emb=euclidean_distances(X_emb_UMAP)
+kmedoids_model= KMedoids(n_clusters=3, random_state=80085, method="fasterpam").fit(distances_emb)
 kmedoids_labels = kmedoids_model.labels_
 kmedoids_results = final_dataset[["Day", "season"]].copy()
 kmedoids_results["kmedoids_cluster"] = kmedoids_labels
 kmedoids_results["real_labels"]= final_dataset_scaled['season'].values
 
+# %%
+draw_clusters(X_emb_UMAP, kmedoids_labels, f"KMedoids klasterizacija su {3} klasteriais")
 
 # %%
-draw_clusters(X_emb_pca, kmedoids_labels, f"KMedoids klasterizacija su {2} klasteriais")
-
-
+draw_clusters(X_emb_UMAP, kmedoids_labels, f"KMedoids klasterizacija su {3} klasteriais")
 
 # %% [markdown]
-#    <h1> Dimensijos mažinimas iki 8 dimensijų </h1>
+#     <h1> Dimensijos mažinimas iki 8 dimensijų </h1>
 
 # %%
 pca_model = PCA(n_components=8, random_state=80085)
@@ -1578,15 +1158,12 @@ t = trustworthiness(X.values, pca_result, n_neighbors=8)
 c = trustworthiness(pca_result, X.values, n_neighbors=8)
 
 D_orig = pairwise_distances(X.values)
-D_emb = pairwise_distances(X_emb_pca)
-stress = normalized_stress(X.values, X_emb_pca)
+D_emb = pairwise_distances(X_emb_UMAP)
+stress = normalized_stress(X.values, X_emb_UMAP)
 
 print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {stress:.4f}") # cia gauname labai geri rezultatai, todel kitu algoritmu netikriname, darome klasterizavima su PCA rezultatais
-
-
-
 
 # %%
 plt.figure(figsize=(10, 7))
@@ -1618,21 +1195,14 @@ plt.show()
 
 print('Explained variance ratio:', np.round(pca_model.explained_variance_ratio_, 4))
 
-
-
-
 # %%
 X_pca_df_8 = pd.DataFrame(pca_result, columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8'])
 X_pca_df_8['season'] = final_dataset_scaled['season'].values
 
 X_emb_pca_8 = X_pca_df_8[['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8']].values
 
-
-
-
-
 # %% [markdown]
-#    <h2> K-means </h2>
+#     <h2> K-means </h2>
 
 # %%
 inertias = []
@@ -1650,9 +1220,6 @@ plt.title("Alkūnės metodas (PCA su 8 komponentėmis)")
 plt.grid(True)
 plt.show()
 
-
-
-
 # %%
 K_means_model_8 = KMeans(n_clusters=2, random_state=80085, n_init="auto")
 clusters_8 = K_means_model_8.fit_predict(X_emb_pca_8)
@@ -1661,9 +1228,6 @@ silhouette_score_8 = silhouette_score(X_emb_pca_8, clusters_8)
 print(f"Silhouette Score for k=2 (PCA 8 components): {silhouette_score_8:.4f}")
 davies_bouldin_score_8 = davies_bouldin_score(X_emb_pca_8, clusters_8)
 print(f"Davies-Bouldin Score for k=2 (PCA 8 components): {davies_bouldin_score_8:.4f}")
-
-
-
 
 # %%
 stability_results_8 = run_clustering_stability(
@@ -1684,9 +1248,6 @@ best_k = stability_results_8["best_k"]
 
 print("Stabilumo suvestinė pagal k:")
 stability_summary
-
-
-
 
 # %%
 fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
@@ -1732,12 +1293,8 @@ plt.suptitle(f"KMeans stabilumo metrikos pagal k")
 plt.tight_layout()
 plt.show()
 
-
-
-
-
 # %% [markdown]
-#    <h2> Hierarchinis </h2>
+#     <h2> Hierarchinis </h2>
 
 # %%
 Z = linkage(X_emb_pca_8, method='ward')
@@ -1752,9 +1309,6 @@ plt.title("")
 plt.xticks([])
 plt.show()
 
-
-
-
 # %%
 hierarchical_model_8 = AgglomerativeClustering(n_clusters=2, linkage='ward')
 hierarchical_clusters_8 = hierarchical_model.fit_predict(X_emb_pca_8)
@@ -1765,9 +1319,6 @@ hierarchical_score_silhouette_8 = silhouette_score(X_emb_pca_8, hierarchical_clu
 hierarchical_score_davies_bouldin_8 = davies_bouldin_score(X_emb_pca_8, hierarchical_clusters_8)
 print(f"Silhouette Score Hierarchical Model for k=2: {hierarchical_score_silhouette_8:.4f}")
 print(f"Davies-Bouldin Score Hierarchical Model for k=2: {hierarchical_score_davies_bouldin_8:.4f}")
-
-
-
 
 # %%
 stability_results_8 = run_clustering_stability(
@@ -1789,9 +1340,6 @@ best_k = stability_results_8["best_k"]
 
 print("Stabilumas pagal k (hierarchical):")
 stability_summary
-
-
-
 
 # %%
 fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
@@ -1837,15 +1385,12 @@ plt.suptitle(f"Hierarchical clustering stabilumo metrikos pagal k")
 plt.tight_layout()
 plt.show()
 
-
-
-
 # %% [markdown]
-#      <h1> DBSCAN </h1>
+#       <h1> DBSCAN </h1>
 
 # %%
 for eps in np.arange(0.1, 5.1, 0.1):
-    db = DBSCAN(eps=eps, min_samples=5).fit(X_emb_pca)
+    db = DBSCAN(eps=eps, min_samples=5).fit(X_emb_UMAP)
     labels = db.labels_
 
     mask = labels != -1
@@ -1853,18 +1398,23 @@ for eps in np.arange(0.1, 5.1, 0.1):
     n_noise = (labels == -1).sum()
 
     if n_clusters > 1 and mask.sum() > 1:
-        sil = silhouette_score(X_emb_pca[mask], labels[mask])
-        dbi = davies_bouldin_score(X_emb_pca[mask], labels[mask])
+        sil = silhouette_score(X_emb_UMAP[mask], labels[mask])
+        dbi = davies_bouldin_score(X_emb_UMAP[mask], labels[mask])
     else:
         sil, dbi = np.nan, np.nan
 
     print(f"eps={eps:.1f} → clusters={n_clusters}, noise={n_noise}, sil={sil:.3f}, db={dbi:.3f}")
 
-
-
-
 # %% [markdown]
-#    Geriausia silueta gavome:eps=2.1 → clusters=4, noise=52, sil=0.924, db=0.293
+#     Geriausia silueta gavome:eps=2.1 → clusters=4, noise=52, sil=0.924, db=0.293
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
 # 
 # 
 # 
@@ -1876,10 +1426,7 @@ for eps in np.arange(0.1, 5.1, 0.1):
 
 # %%
 dbscan_model = DBSCAN(eps=2.1, min_samples=5)
-dbscan_clusters = dbscan_model.fit_predict(X_emb_pca)
-
-
-
+dbscan_clusters = dbscan_model.fit_predict(X_emb_UMAP)
 
 # %%
 dbscan_results = final_dataset[["Day", "season"]].copy()
@@ -1888,8 +1435,8 @@ dbscan_results["dbscan_cluster"] = dbscan_clusters
 mask = dbscan_clusters != -1
 
 if len(set(dbscan_clusters[mask])) > 1:
-    silhouette = silhouette_score(X_emb_pca[mask], dbscan_clusters[mask])
-    db_index = davies_bouldin_score(X_emb_pca[mask], dbscan_clusters[mask])
+    silhouette = silhouette_score(X_emb_UMAP[mask], dbscan_clusters[mask])
+    db_index = davies_bouldin_score(X_emb_UMAP[mask], dbscan_clusters[mask])
 else:
     silhouette = np.nan
     db_index = np.nan
@@ -1899,15 +1446,12 @@ print(f"Davies-Bouldin Score DBSCAN: {db_index:.4f}")
 print(f"Number of clusters: {len(set(dbscan_clusters)) - (1 if -1 in dbscan_clusters else 0)}")
 print(f"Noise points: {(dbscan_clusters == -1).sum()}")
 
-
-
-
 # %%
 plt.figure(figsize=(8, 8))
 
 plt.scatter(
-    X_emb_pca[:, 0],
-    X_emb_pca[:, 1],
+    X_emb_UMAP[:, 0],
+    X_emb_UMAP[:, 1],
     c=dbscan_clusters,
     cmap='Set1',
     s=50,
@@ -1916,18 +1460,17 @@ plt.scatter(
 
 plt.title("DBSCAN klasterizavimo rezultatai (eps=2.1)")
 
-lim_min = min(X_emb_pca[:, 0].min(), X_emb_pca[:, 1].min()) - 1
-lim_max = max(X_emb_pca[:, 0].max(), X_emb_pca[:, 1].max()) + 1
+lim_min = min(X_emb_UMAP[:, 0].min(), X_emb_UMAP[:, 1].min()) - 1
+lim_max = max(X_emb_UMAP[:, 0].max(), X_emb_UMAP[:, 1].max()) + 1
 plt.xlim(lim_min, lim_max)
 plt.ylim(lim_min, lim_max)
 
 plt.show() #cia noise yra pilkai pavaizduoti
 
-
-
-
 # %% [markdown]
-#  #  <h2> BDSCAN </h2>
+#   #  <h2> BDSCAN </h2>
+# 
+# 
 # 
 # 
 
@@ -1952,9 +1495,6 @@ best_eps = stability_results_8["best_eps"]
 
 print("Stabilumo suvestinė pagal eps (DBSCAN):")
 stability_summary
-
-
-
 
 # %%
 fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
@@ -2000,15 +1540,9 @@ plt.suptitle("DBSCAN stabilumo metrikos pagal eps")
 plt.tight_layout()
 plt.show()
 
-
-
-
 # %%
 dbscan_model_8 = DBSCAN(eps=2.1, min_samples=5)
 dbscan_clusters_8 = dbscan_model_8.fit_predict(X_emb_pca_8)
-
-
-
 
 # %%
 dbscan_results_8 = final_dataset[["Day", "season"]].copy()
@@ -2028,15 +1562,11 @@ print(f"Davies-Bouldin Score DBSCAN: {db_index:.4f}")
 print(f"Number of clusters: {len(set(dbscan_clusters_8)) - (1 if -1 in dbscan_clusters_8 else 0)}")
 print(f"Noise points: {(dbscan_clusters_8 == -1).sum()}")
 
-
-
-
+# %% [markdown]
+#     <h1> Klasterizavimas originalioje dimensijoje </h1>
 
 # %% [markdown]
-#    <h1> Klasterizavimas originalioje dimensijoje </h1>
-
-# %% [markdown]
-#    <h2> K-means </h2>
+#     <h2> K-means </h2>
 
 # %%
 inertias = []
@@ -2054,9 +1584,6 @@ plt.title("Alkūnės metodas (Originalioje dimensijoje)")
 plt.grid(True)
 plt.show()
 
-
-
-
 # %%
 K_means_model_orig = KMeans(n_clusters=2, random_state=80085, n_init="auto")
 clusters_orig = K_means_model_orig.fit_predict(X)
@@ -2065,9 +1592,6 @@ silhouette_score_orig = silhouette_score(X, clusters_orig)
 print(f"Silhouette Score for k=2 (Originalioje dimensijoje): {silhouette_score_orig:.4f}")
 davies_bouldin_score_orig = davies_bouldin_score(X, clusters_orig)
 print(f"Davies-Bouldin Score for k=2 (Originalioje dimensijoje): {davies_bouldin_score_orig:.4f}")
-
-
-
 
 # %%
 stability_results_orig = run_clustering_stability(
@@ -2088,9 +1612,6 @@ best_k = stability_results_orig["best_k"]
 
 print("Stabilumo suvestinė pagal k:")
 stability_summary_orig
-
-
-
 
 # %%
 fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
@@ -2136,12 +1657,8 @@ plt.suptitle(f"KMeans stabilumo metrikos pagal k")
 plt.tight_layout()
 plt.show()
 
-
-
-
-
 # %% [markdown]
-#    <h2> Hierarchinis </h2>
+#     <h2> Hierarchinis </h2>
 
 # %%
 Z = linkage(X, method='ward')
@@ -2156,9 +1673,6 @@ plt.title("")
 plt.xticks([])
 plt.show()
 
-
-
-
 # %%
 hierarchical_model_orig = AgglomerativeClustering(n_clusters=2, linkage='ward')
 hierarchical_clusters_orig = hierarchical_model.fit_predict(X)
@@ -2169,9 +1683,6 @@ hierarchical_score_silhouette_orig = silhouette_score(X, hierarchical_clusters_o
 hierarchical_score_davies_bouldin_orig = davies_bouldin_score(X, hierarchical_clusters_orig)
 print(f"Silhouette Score Hierarchical Model for k=2: {hierarchical_score_silhouette_orig:.4f}")
 print(f"Davies-Bouldin Score Hierarchical Model for k=2: {hierarchical_score_davies_bouldin_orig:.4f}")
-
-
-
 
 # %%
 stability_results_orig = run_clustering_stability(
@@ -2193,9 +1704,6 @@ best_k = stability_results_orig["best_k"]
 
 print("Stabilumo suvestinė pagal k (hierarchical):")
 stability_summary_orig
-
-
-
 
 # %%
 fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
@@ -2241,11 +1749,8 @@ plt.suptitle(f"Hierarchical clustering stabilumo metrikos pagal k")  # <-- chang
 plt.tight_layout()
 plt.show()
 
-
-
-
 # %% [markdown]
-#    <h2> BDSCAN </h2>
+#     <h2> BDSCAN </h2>
 
 # %%
 stability_results_orig = run_clustering_stability(
@@ -2268,9 +1773,6 @@ best_eps = stability_results_orig["best_eps"]
 
 print("Stabilumo suvestinė pagal eps (DBSCAN):")
 stability_summary_orig
-
-
-
 
 # %%
 fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharex=True)
@@ -2316,15 +1818,9 @@ plt.suptitle("DBSCAN stabilumo metrikos pagal eps")
 plt.tight_layout()
 plt.show()
 
-
-
-
 # %%
 dbscan_model_orig = DBSCAN(eps=2.1, min_samples=5)
 dbscan_clusters_orig = dbscan_model_orig.fit_predict(X)
-
-
-
 
 # %%
 dbscan_results_orig= final_dataset[["Day", "season"]].copy()
@@ -2343,14 +1839,4 @@ print(f"Silhouette Score DBSCAN: {silhouette:.4f}")
 print(f"Davies-Bouldin Score DBSCAN: {db_index:.4f}")
 print(f"Number of clusters: {len(set(dbscan_clusters_orig)) - (1 if -1 in dbscan_clusters_orig else 0)}")
 print(f"Noise points: {(dbscan_clusters_orig == -1).sum()}")
-
-
-
-
-
-
-
-
-
-
 
