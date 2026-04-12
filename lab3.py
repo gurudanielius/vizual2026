@@ -897,14 +897,6 @@ plt.tight_layout()
 plt.show()
 
 
-
-
-
-
-
-
-
-
 # %%
 X_emb_MDS = mds_df[['MDS1', 'MDS2']].values
 
@@ -915,6 +907,74 @@ print(f"Trustworthiness: {t:.4f}")
 print(f"Continuity: {c:.4f}")
 print(f"Stress: {mds.stress_:.4f}")
 
+import umap
+def umap_grid_search(X, param_grid, n_neighbors=10, random_state=42):
+    grid = ParameterGrid(param_grid)
+    results = []
+    for params in grid:
+        umap_model = umap.UMAP(n_components=2, random_state=random_state, **params)
+        try:
+            X_emb_UMAP = umap_model.fit_transform(X)
+            t = trustworthiness(X, X_emb_UMAP, n_neighbors=n_neighbors)
+            c = trustworthiness(X_emb_UMAP, X, n_neighbors=n_neighbors)
+            results.append({
+                'params': params,
+                'trustworthiness': t,
+                'continuity': c,
+            })
+        except Exception as e:
+            print(f"Error with params {params}: {e}")
+            continue
+
+    return results
+
+param_grid = {'n_neighbors': [5, 10, 15, 30], 'min_dist': [0.0, 0.1, 0.25, 0.5]}
+results = umap_grid_search(X, param_grid)
+for res in results:
+    print(res)
+
+# %%
+umap_model = umap.UMAP(n_components=2, min_dist=0.25, n_neighbors=10, random_state=42)
+umap_result = umap_model.fit_transform(X)
+umap_df = pd.DataFrame(umap_result, columns=['UMAP1', 'UMAP2'])
+umap_df['season'] = final_dataset_scaled['season'].values
+
+# %%
+plt.figure(figsize=(10, 7))
+lims = [
+    min(np.floor(umap_df['UMAP1'].min()), np.floor(umap_df['UMAP2'].min())) - 1,
+    max(np.ceil(umap_df['UMAP1'].max()), np.ceil(umap_df['UMAP2'].max())) + 1
+]
+
+plt.xlim(lims)
+plt.ylim(lims)
+plt.gca().set_aspect('equal', adjustable='box')
+
+sns.scatterplot(
+    data=umap_df,
+    x='UMAP1',
+    y='UMAP2',
+    hue='season',
+    palette='husl',
+    s=75,
+    hue_order=['Winter', 'Spring', 'Summer', 'Autumn']
+)
+
+plt.title(f'UMAP projekcija dienos energijos profiliams')
+plt.legend(title='Season', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
+
+
+# %%
+X_emb_UMAP = umap_df[['UMAP1', 'UMAP2']].values
+
+t = trustworthiness(X, X_emb_UMAP, n_neighbors=10)
+c = trustworthiness(X_emb_UMAP, X, n_neighbors=10)
+
+print(f"Trustworthiness: {t:.4f}")
+print(f"Continuity: {c:.4f}")
+print(f"Stress: {mds.stress_:.4f}")
 
 
 
