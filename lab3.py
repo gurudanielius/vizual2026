@@ -12,8 +12,6 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import MDS, TSNE, trustworthiness
 from sklearn.metrics import (
     adjusted_rand_score,
-    normalized_mutual_info_score,
-    jaccard_score,
     davies_bouldin_score,
     pairwise_distances,
     silhouette_score,
@@ -816,30 +814,6 @@ def stratified_sample_indices(strata_labels, sample_fraction, rng, min_total_siz
 
     return idx
 
-
-def clustering_pairwise_jaccard(labels_a, labels_b, ignore_noise=True):
-    labels_a = np.asarray(labels_a)
-    labels_b = np.asarray(labels_b)
-
-    if labels_a.shape[0] != labels_b.shape[0] or labels_a.shape[0] < 2:
-        return np.nan
-
-    pair_a = labels_a[:, None] == labels_a[None, :]
-    pair_b = labels_b[:, None] == labels_b[None, :]
-    tri_mask = np.triu(np.ones((labels_a.shape[0], labels_a.shape[0]), dtype=bool), k=1)
-
-    if ignore_noise:
-        valid_a = labels_a != -1
-        valid_b = labels_b != -1
-        pair_valid = (valid_a[:, None] & valid_a[None, :] & valid_b[:, None] & valid_b[None, :])
-        tri_mask &= pair_valid
-
-    a_same = pair_a[tri_mask].astype(int)
-    b_same = pair_b[tri_mask].astype(int)
-    if a_same.size == 0:
-        return np.nan
-    return jaccard_score(a_same, b_same, average="binary", zero_division=0)
-
 def run_clustering_stability(
     X_data,
     strata_labels,
@@ -902,26 +876,17 @@ def run_clustering_stability(
             run_row_sets.append(set(row_ids_run))
 
         k_ari_values = []
-        k_nmi_values = []
-        k_jaccard_values = []
         for a, b in combinations(range(n_runs), 2):
             common = sorted(run_row_sets[a] & run_row_sets[b])
             if len(common) < 2:
                 continue
-            labels_a = np.array([run_label_maps[a][r] for r in common])
-            labels_b = np.array([run_label_maps[b][r] for r in common])
-            ari = adjusted_rand_score(labels_a, labels_b)
-            nmi = normalized_mutual_info_score(labels_a, labels_b)
-            jaccard = clustering_pairwise_jaccard(labels_a, labels_b, ignore_noise=(method == "dbscan"))
+            ari = adjusted_rand_score([run_label_maps[a][r] for r in common],
+                                      [run_label_maps[b][r] for r in common])
             k_ari_values.append(ari)
-            k_nmi_values.append(nmi)
-            k_jaccard_values.append(jaccard)
-            all_ari_pairs.append({param_key: param, "run_a": a+1, "run_b": b+1, "common_rows": len(common), "ari": ari, "nmi": nmi, "jaccard": jaccard})
+            all_ari_pairs.append({param_key: param, "run_a": a+1, "run_b": b+1, "common_rows": len(common), "ari": ari})
 
         m = pd.DataFrame([r for r in all_run_metrics if r[param_key] == param])
         ari_arr = np.asarray(k_ari_values, dtype=float)
-        nmi_arr = np.asarray(k_nmi_values, dtype=float)
-        jaccard_arr = np.asarray(k_jaccard_values, dtype=float)
         summary_rows.append({
             param_key:             param,
             "mean_silhouette":     np.nanmean(m["silhouette"]),
@@ -930,18 +895,14 @@ def run_clustering_stability(
             "std_davies_bouldin":  np.nanstd(m["davies_bouldin"], ddof=1),
             "mean_calinski_harabasz": np.nanmean(m["calinski_harabasz"]),
             "std_calinski_harabasz":  np.nanstd(m["calinski_harabasz"], ddof=1),
-            "mean_jaccard":        np.nanmean(jaccard_arr) if len(jaccard_arr) else np.nan,
-            "std_jaccard":         np.nanstd(jaccard_arr, ddof=1) if len(jaccard_arr) > 1 else np.nan,
             "mean_ari":            np.nanmean(ari_arr) if len(ari_arr) else np.nan,
             "std_ari":             np.nanstd(ari_arr, ddof=1) if len(ari_arr) > 1 else np.nan,
-            "mean_nmi":            np.nanmean(nmi_arr) if len(nmi_arr) else np.nan,
-            "std_nmi":             np.nanstd(nmi_arr, ddof=1) if len(nmi_arr) > 1 else np.nan,
         })
 
     summary_df = pd.DataFrame(summary_rows)
-    ranking = summary_df.dropna(subset=["mean_ari", "mean_nmi", "mean_jaccard", "mean_silhouette", "mean_calinski_harabasz"]).sort_values(
-        by=["mean_ari", "mean_nmi", "mean_jaccard", "mean_silhouette", "mean_calinski_harabasz", "mean_davies_bouldin", "std_ari", "std_nmi", "std_jaccard", "std_silhouette", param_key],
-        ascending=[False, False, False, False, False, True, True, True, True, True, True],
+    ranking = summary_df.dropna(subset=["mean_ari", "mean_silhouette", "mean_calinski_harabasz"]).sort_values(
+        by=["mean_ari", "mean_silhouette", "mean_calinski_harabasz", "mean_davies_bouldin", "std_ari", "std_silhouette", param_key],
+        ascending=[False, False, False, True, True, True, True],
     ).reset_index(drop=True)
 
     best = ranking[param_key].iloc[0] if not ranking.empty else None
@@ -1036,7 +997,7 @@ axes[2].errorbar(
     fmt="o-",
     capsize=4,
 )
-axes[2].axvline(best_k, color="red", linestyle="--", alpha=0.7)
+axes[2].axvline(3, color="red", linestyle="--", alpha=0.7)
 axes[2].set_title("Calinski-Harabasz")
 axes[2].set_xlabel("k")
 axes[2].grid(True, alpha=0.25)
@@ -1112,7 +1073,7 @@ kmeans_results.head()
 #     <h1> HIERARCHINIS </h1>
 
 # %%
-Z = linkage(X_emb_pca, method='single', metric='cityblock')
+Z = linkage(X_emb_pca, method='average', metric='euclidean')
 last = Z[-10:, 2]          
 acceleration = np.diff(last, 2)  
 k = acceleration[::-1].argmax() + 2 
@@ -1128,7 +1089,7 @@ plt.show()
 
 # %%
 #Applying the model here now
-hierarchical_model = AgglomerativeClustering(n_clusters=2, linkage='single', metric='manhattan')
+hierarchical_model = AgglomerativeClustering(n_clusters=2, linkage='average', metric='euclidean')
 hierarchical_clusters = hierarchical_model.fit_predict(X_emb_pca)
 
 
@@ -1205,21 +1166,21 @@ plt.show()
 #         <h1> DBSCAN </h1>
 
 # %%
-for eps in np.arange(0.1, 5.1, 0.1):
-    db = DBSCAN(eps=eps, min_samples=5).fit(X_emb_pca)
-    labels = db.labels_
+# for eps in np.arange(0.1, 5.1, 0.1):
+#     db = DBSCAN(eps=eps, min_samples=5).fit(X_emb_pca)
+#     labels = db.labels_
 
-    mask = labels != -1
-    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-    n_noise = (labels == -1).sum()
+#     mask = labels != -1
+#     n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+#     n_noise = (labels == -1).sum()
 
-    if n_clusters > 1 and mask.sum() > 1:
-        sil = silhouette_score(X_emb_pca[mask], labels[mask])
-        dbi = davies_bouldin_score(X_emb_pca[mask], labels[mask])
-    else:
-        sil, dbi = np.nan, np.nan
+#     if n_clusters > 1 and mask.sum() > 1:
+#         sil = silhouette_score(X_emb_pca[mask], labels[mask])
+#         dbi = davies_bouldin_score(X_emb_pca[mask], labels[mask])
+#     else:
+#         sil, dbi = np.nan, np.nan
 
-    print(f"eps={eps:.1f} → clusters={n_clusters}, noise={n_noise}, sil={sil:.3f}, db={dbi:.3f}")
+#     print(f"eps={eps:.1f} → clusters={n_clusters}, noise={n_noise}, sil={sil:.3f}, db={dbi:.3f}")
 
 
 
@@ -1322,16 +1283,20 @@ import numpy as np
 
 plt.figure(figsize=(8, 8))
 
-plt.scatter(
-    X_emb_pca[:, 0],
-    X_emb_pca[:, 1],
-    c=dbscan_clusters,
-    cmap='Set1',
-    s=50,
-    alpha=0.7
-)
+for label in unique_labels:
+    mask = dbscan_clusters == label
+    cluster_name = "Noice" if label == -1 else f"Cluster {label + 1}"
+    plt.scatter(
+        X_emb_pca[mask, 0],
+        X_emb_pca[mask, 1],
+        c=colors.get(label, 'gray'),
+        s=50,
+        alpha=0.7,
+        label=cluster_name
+    )
 
-plt.title("DBSCAN klasterizavimo rezultatai (eps=2.1)")
+plt.title("DBSCAN klasterizavimo rezultatai (eps=3, min_samples=7)")
+plt.legend()
 
 lim_min = min(X_emb_pca[:, 0].min(), X_emb_pca[:, 1].min()) - 1
 lim_max = max(X_emb_pca[:, 0].max(), X_emb_pca[:, 1].max()) + 1
@@ -1456,7 +1421,7 @@ plt.show()
 
 # %%
 distances_emb=euclidean_distances(X_emb_pca)
-kmedoids_model= KMedoids(n_clusters=2, random_state=80085, method="fasterpam").fit(distances_emb)
+kmedoids_model= KMedoids(n_clusters=3, random_state=80085, method="fasterpam").fit(distances_emb)
 kmedoids_labels = kmedoids_model.labels_
 kmedoids_results = final_dataset[["Day", "season"]].copy()
 kmedoids_results["kmedoids_cluster"] = kmedoids_labels
