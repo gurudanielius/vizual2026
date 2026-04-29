@@ -1,26 +1,9 @@
-`# %%
+# %%
 import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
-from scipy.cluster.hierarchy import dendrogram, linkage
-
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
-from sklearn.decomposition import PCA
-from sklearn.manifold import MDS, TSNE, trustworthiness
-from sklearn.metrics import (
-    adjusted_rand_score,
-    normalized_mutual_info_score,
-    jaccard_score,
-    davies_bouldin_score,
-    pairwise_distances,
-    silhouette_score,
-    euclidean_distances,
-    calinski_harabasz_score
-)
-from sklearn.model_selection import ParameterGrid
-from sklearn.neighbors import NearestNeighbors
+from sklearn.model_selection import ParameterGrid, train_test_split
 from sklearn.preprocessing import RobustScaler, StandardScaler
-from kmedoids import KMedoids
 
 # %%
 final_dataset=pd.read_csv("final_dataset.csv")
@@ -161,6 +144,12 @@ plt.show()
 
 # %%
 
+X=final_dataset.drop(columns=["season"])
+y=final_dataset["season"]
+
+# %%
+X_temp, X_test, y_temp, y_test = train_test_split(X, y, train_size=0.8, stratify=y, random_state=80085)
+X_train, y_train, X_val, y_val = train_test_split(X_temp, y_temp, train_size=0.8, stratify=y_temp, random_state=80085)
 
 # %%
 
