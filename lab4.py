@@ -1,9 +1,19 @@
 # %%
 import pandas as pd
+import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import ParameterGrid, train_test_split
 from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.manifold import MDS, TSNE, trustworthiness
+from sklearn.metrics import pairwise_distances
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, ConfusionMatrixDisplay
+import warnings
+
+# %%
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
 # %%
 final_dataset=pd.read_csv("final_dataset.csv")
@@ -11,17 +21,19 @@ final_dataset=pd.read_csv("final_dataset.csv")
 # %%
 final_dataset.head()
 
+
 # %%
 label_counts = final_dataset["season"].value_counts()
 label_counts # klases subalansuotos
 
+
 # %%
-final_dataset.drop(columns=["month"], inplace=True)
+# final_dataset.drop(columns=["month"], inplace=True)
+
 
 # %%
 sums=final_dataset.copy()
 sums=sums.select_dtypes(include="number").mean(axis=1).to_frame(name="mean")
-
 
 # %%
 sums
@@ -75,6 +87,7 @@ plt.show()
 
 
 
+
 # %%
 plot_means=sums.groupby("season")["mean"].mean().to_frame(name="mean")
 plot_means[ "std" ] = sums.groupby("season")["mean"].std().to_frame(name="std")
@@ -104,7 +117,9 @@ plt.ylabel("Vidutinė galia")
 plt.tight_layout()
 plt.show()
 
+
 # %%
+#kodel grafikas toks gaunasi:DD edit:viskas ok dabar
 final_dataset_melted["time_dt"] = pd.to_datetime(final_dataset_melted["time"], format="%H:%M", errors="coerce")
 
 line_df = (
@@ -141,17 +156,216 @@ plt.tight_layout()
 plt.show()
 
 
+# %% [markdown]
+# # Duomenų padalinimas
 
 # %%
-
-X=final_dataset.drop(columns=["season"])
-y=final_dataset["season"]
-
-# %%
-X_temp, X_test, y_temp, y_test = train_test_split(X, y, train_size=0.8, stratify=y, random_state=80085)
-X_train, y_train, X_val, y_val = train_test_split(X_temp, y_temp, train_size=0.8, stratify=y_temp, random_state=80085)
+X = final_dataset.drop(columns=["season", "Day", "month"])
+y = final_dataset["season"]
 
 # %%
+#Originalios aibes padalinimas
+X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.2, stratify=y, random_state=80085)
+X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=80085)
 
+# %% [markdown]
+# # Dimensijos mažinimas
+
+# %%
+def normalized_stress(X, X_emb):
+	D_orig = pairwise_distances(X)
+	D_emb = pairwise_distances(X_emb)
+	return np.sum((D_orig - D_emb) ** 2) / np.sum(D_orig ** 2)
+
+def emb_metrics(X_orig, X_emb, n_neighbors=10):
+    X_orig = np.asarray(X_orig)
+    X_emb = np.asarray(X_emb)
+
+    t = trustworthiness(X_orig, X_emb, n_neighbors=n_neighbors)
+    c = trustworthiness(X_emb, X_orig, n_neighbors=n_neighbors)
+    stress = normalized_stress(X_orig, X_emb)
+
+    print(f"Trustworthiness: {t:.4f}")
+    print(f"Continuity:      {c:.4f}")
+    print(f"Stress:          {stress:.4f}")
+
+# %% [markdown]
+# ### PCA
+# Praeitame laboratoriniame darbe naudotas tas pats duomenų rinkinys ir ten gauta, kad geriausias dimensijos mažinimo algoritmas yra PCA. Šiame laboratorinyje taip pat naudosime PCA.
+
+# %%
+pca_model = PCA(n_components=2, random_state=80085)
+
+# %%
+#PCA aibes padalinimas (padariau kad musu orignalios aibes padalinimas butu tas pats kaip ir PCA del consistency)
+scaler = RobustScaler()
+X_scaled_train = scaler.fit_transform(X_train)
+X_scaled_val   = scaler.transform(X_val)
+X_scaled_test  = scaler.transform(X_test)
+
+X_train_pca = pca_model.fit_transform(X_scaled_train)
+X_val_pca   = pca_model.transform(X_scaled_val)
+X_test_pca  = pca_model.transform(X_scaled_test)
+
+# %% [markdown]
+# # Atsitiktinių miškų klasifikatorius
+# 
+# **Pagrindiniai hiperparametrai:**
+# 1. n_estimators 
+# 2. max_depth 
+# 3. min_samples_split 
+# 4. min_samples_leaf
+# 5. max_features 
+
+# %% [markdown]
+# ## Originali duomenų aibė
+
+# %%
+rf_param_grid = {
+    'n_estimators': [50, 200, 500],
+    'max_depth': [5, 10, None],
+    'max_features': ['sqrt', 'log2', 0.5],
+}
+
+rf_results = []
+for rf_params in ParameterGrid(rf_param_grid):
+    rf_model = RandomForestClassifier(**rf_params, random_state=80085, n_jobs=-1).fit(X_train, y_train)
+    rf_results.append({
+        **rf_params,
+        'train_acc': rf_model.score(X_train, y_train),
+        'val_acc': rf_model.score(X_val, y_val),
+    })
+
+rf_results_df = pd.DataFrame(rf_results).sort_values('val_acc', ascending=False).reset_index(drop=True)
+rf_results_df
+
+# %%
+best_rf = RandomForestClassifier(
+    max_depth=10, max_features=0.5, n_estimators=50,
+    random_state=80085
+).fit(X_train, y_train)
+
+test_acc_rf = best_rf.score(X_test, y_test)
+print(f"Test accuracy: {test_acc_rf :.4f}")
+
+# %%
+y_test_pred_rf = best_rf.predict(X_test)
+
+print(f"Test accuracy: {best_rf.score(X_test, y_test):.4f}\n")
+print(classification_report(y_test, y_test_pred_rf, digits=3))
+
+# %%
+cm_test_rf = confusion_matrix(y_test, y_test_pred_rf, labels=["Winter", "Spring", "Summer", "Autumn"])
+disp_rf = ConfusionMatrixDisplay(
+    cm_test_rf,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+disp_rf.plot(cmap="Blues")
+disp_rf.ax_.set_xlabel("Prognozuota klasė")
+disp_rf.ax_.set_ylabel("Tikroji klasė")
+plt.title("Atsitiktinių miškų sumaišymo matrica - testinė aibė")
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ## Dviejų dimensijų aibė
+
+# %%
+rf_results_pca = []
+for rf_params in ParameterGrid(rf_param_grid):
+    rf_model = RandomForestClassifier(**rf_params, random_state=80085, n_jobs=-1).fit(X_train_pca, y_train)
+    rf_results_pca.append({
+        **rf_params,
+        'train_acc': rf_model.score(X_train_pca, y_train),
+        'val_acc': rf_model.score(X_val_pca, y_val),
+    })
+
+rf_results_pca_df = pd.DataFrame(rf_results_pca).sort_values('val_acc', ascending=False).reset_index(drop=True)
+rf_results_pca_df
+
+# %% [markdown]
+# Prasti popieriai, PCA duomenų aibė labai pablogina rezultatus - validacijos aibė realiai spėlioja duomenis, o klasifikacvimo tikslumas (ten kur validacija geriausia) sieki tik 0,767...
+
+# %%
+best_rf_pca = RandomForestClassifier(
+    max_depth=5, max_features="sqrt", n_estimators=200,
+    random_state=80085, n_jobs=1
+).fit(X_train_pca, y_train)
+
+
+# %%
+y_test_pred_rf_pca = best_rf_pca.predict(X_test_pca)
+test_acc_rf_pca = best_rf_pca.score(X_test_pca, y_test)
+
+print(f"Test accuracy: {test_acc_rf_pca :.4f}\n")
+print(classification_report(y_test, y_test_pred_rf_pca, digits=3))
+
+# %%
+cm_test_rf_pca = confusion_matrix(y_test, y_test_pred_rf_pca, labels=["Winter", "Spring", "Summer", "Autumn"])
+disp_rf_pca = ConfusionMatrixDisplay(
+    cm_test_rf_pca,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+disp_rf_pca.plot(cmap="Blues")
+disp_rf_pca.ax_.set_xlabel("Prognozuota klasė")
+disp_rf_pca.ax_.set_ylabel("Tikroji klasė")
+plt.title("Atsitiktinių miškų sumaišymo matrica - testinė aibė (PCA)")
+plt.tight_layout()
+plt.show()
+
+# %%
+def plot_classification_pca(X_test_pca, y_test, y_pred, title):
+    season_colors_map = {
+        "Winter": "#4C78A8", "Spring": "#59A14F",
+        "Summer": "#F28E2B", "Autumn": "#9C755F",
+    }
+    season_lt = {"Winter": "Žiema", "Spring": "Pavasaris",
+                 "Summer": "Vasara", "Autumn": "Ruduo"}
+
+    y_test_arr = np.array(y_test)
+    correct = y_test_arr == np.array(y_pred)
+
+    lim_min = np.floor(min(X_test_pca[:, 0].min(), X_test_pca[:, 1].min())) - 1
+    lim_max = np.ceil(max(X_test_pca[:, 0].max(), X_test_pca[:, 1].max())) + 1
+
+    plt.figure(figsize=(9, 9))
+
+    for season in ["Winter", "Spring", "Summer", "Autumn"]:
+        mask = y_test_arr == season
+        plt.scatter(
+            X_test_pca[mask, 0], X_test_pca[mask, 1],
+            c=season_colors_map[season],
+            label=season_lt[season],
+            s=70, alpha=0.8,
+            edgecolor="white", linewidth=0.5,
+        )
+
+    plt.scatter(
+        X_test_pca[~correct, 0], X_test_pca[~correct, 1],
+        facecolors="none", edgecolors="red",
+        s=200, linewidths=2,
+        label=f"Klaidos ({(~correct).sum()})",
+    )
+
+    plt.xlim(lim_min, lim_max)
+    plt.ylim(lim_min, lim_max)
+    plt.gca().set_aspect("equal", adjustable="box")
+    plt.xlabel("PC1")
+    plt.ylabel("PC2")
+    plt.title(title)
+    plt.legend(title="Sezonas", bbox_to_anchor=(1.02, 1), loc="upper left")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+# %%
+plot_classification_pca(X_test_pca, y_test, y_test_pred_rf,
+                        title="Atsitiktinių miškų klasifikavimas PCA erdvėje")
+
+# %% [markdown]
+# #Todo: labiau pasižiūėti kuo klaidos išsiskiria (tiketina, kad bus tie taskai, kurie yra perainamajame laikotarpyje ruduo -> ziema, ziema -> pavasaris, pavasaris -> vasara, vasara -> ruduo)
+
+# %% [markdown]
+# 
 
 
