@@ -1,25 +1,31 @@
 # %%
 import pandas as pd
 import numpy as np
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import ParameterGrid, train_test_split
-from sklearn.preprocessing import RobustScaler, StandardScaler
+import warnings
+from sklearn.model_selection import ParameterGrid, train_test_split, GridSearchCV
+from sklearn.preprocessing import RobustScaler, StandardScaler, label_binarize
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS, TSNE, trustworthiness
-from sklearn.metrics import pairwise_distances
+from sklearn.metrics import (pairwise_distances, classification_report, confusion_matrix, 
+                           accuracy_score, ConfusionMatrixDisplay, balanced_accuracy_score, 
+                           recall_score, f1_score, precision_score, roc_curve, auc, roc_auc_score)
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, ConfusionMatrixDisplay
-import warnings
+from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC
 
 # %%
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
+
 # %%
 final_dataset=pd.read_csv("final_dataset.csv")
 
+
 # %%
 final_dataset.head()
+
 
 
 # %%
@@ -27,23 +33,29 @@ label_counts = final_dataset["season"].value_counts()
 label_counts # klases subalansuotos
 
 
+
 # %%
 # final_dataset.drop(columns=["month"], inplace=True)
+
 
 
 # %%
 sums=final_dataset.copy()
 sums=sums.select_dtypes(include="number").mean(axis=1).to_frame(name="mean")
 
+
 # %%
 sums
+
 
 # %%
 sums["Day"]=final_dataset["Day"]
 sums["season"]=final_dataset["season"]
 
+
 # %%
 sums
+
 
 # %%
 season_order = ["Winter", "Spring", "Summer", "Autumn"]
@@ -88,12 +100,15 @@ plt.show()
 
 
 
+
 # %%
 plot_means=sums.groupby("season")["mean"].mean().to_frame(name="mean")
 plot_means[ "std" ] = sums.groupby("season")["mean"].std().to_frame(name="std")
 
+
 # %%
 plot_means
+
 
 # %%
 # point plot of mean with std by season (no connecting line)
@@ -116,6 +131,7 @@ plt.xlabel("Sezonas")
 plt.ylabel("Vidutinė galia")
 plt.tight_layout()
 plt.show()
+
 
 
 # %%
@@ -156,20 +172,23 @@ plt.tight_layout()
 plt.show()
 
 
+
 # %% [markdown]
-# # Duomenų padalinimas
+#  # Duomenų padalinimas
 
 # %%
 X = final_dataset.drop(columns=["season", "Day", "month"])
 y = final_dataset["season"]
+
 
 # %%
 #Originalios aibes padalinimas
 X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.2, stratify=y, random_state=80085)
 X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=80085)
 
+
 # %% [markdown]
-# # Dimensijos mažinimas
+#  # Dimensijos mažinimas
 
 # %%
 def normalized_stress(X, X_emb):
@@ -189,12 +208,15 @@ def emb_metrics(X_orig, X_emb, n_neighbors=10):
     print(f"Continuity:      {c:.4f}")
     print(f"Stress:          {stress:.4f}")
 
+
 # %% [markdown]
-# ### PCA
-# Praeitame laboratoriniame darbe naudotas tas pats duomenų rinkinys ir ten gauta, kad geriausias dimensijos mažinimo algoritmas yra PCA. Šiame laboratorinyje taip pat naudosime PCA.
+#  ### PCA
+# 
+#  Praeitame laboratoriniame darbe naudotas tas pats duomenų rinkinys ir ten gauta, kad geriausias dimensijos mažinimo algoritmas yra PCA. Šiame laboratorinyje taip pat naudosime PCA.
 
 # %%
 pca_model = PCA(n_components=2, random_state=80085)
+
 
 # %%
 #PCA aibes padalinimas (padariau kad musu orignalios aibes padalinimas butu tas pats kaip ir PCA del consistency)
@@ -207,18 +229,26 @@ X_train_pca = pca_model.fit_transform(X_scaled_train)
 X_val_pca   = pca_model.transform(X_scaled_val)
 X_test_pca  = pca_model.transform(X_scaled_test)
 
-# %% [markdown]
-# # Atsitiktinių miškų klasifikatorius
-# 
-# **Pagrindiniai hiperparametrai:**
-# 1. n_estimators 
-# 2. max_depth 
-# 3. min_samples_split 
-# 4. min_samples_leaf
-# 5. max_features 
 
 # %% [markdown]
-# ## Originali duomenų aibė
+#  # Atsitiktinių miškų klasifikatorius
+# 
+# 
+# 
+#  **Pagrindiniai hiperparametrai:**
+# 
+#  1. n_estimators
+# 
+#  2. max_depth
+# 
+#  3. min_samples_split
+# 
+#  4. min_samples_leaf
+# 
+#  5. max_features
+
+# %% [markdown]
+#  ## Originali duomenų aibė
 
 # %%
 rf_param_grid = {
@@ -239,6 +269,7 @@ for rf_params in ParameterGrid(rf_param_grid):
 rf_results_df = pd.DataFrame(rf_results).sort_values('val_acc', ascending=False).reset_index(drop=True)
 rf_results_df
 
+
 # %%
 best_rf = RandomForestClassifier(
     max_depth=10, max_features=0.5, n_estimators=50,
@@ -248,11 +279,13 @@ best_rf = RandomForestClassifier(
 test_acc_rf = best_rf.score(X_test, y_test)
 print(f"Test accuracy: {test_acc_rf :.4f}")
 
+
 # %%
 y_test_pred_rf = best_rf.predict(X_test)
 
 print(f"Test accuracy: {best_rf.score(X_test, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_rf, digits=3))
+
 
 # %%
 cm_test_rf = confusion_matrix(y_test, y_test_pred_rf, labels=["Winter", "Spring", "Summer", "Autumn"])
@@ -267,8 +300,9 @@ plt.title("Atsitiktinių miškų sumaišymo matrica - testinė aibė")
 plt.tight_layout()
 plt.show()
 
+
 # %% [markdown]
-# ## Dviejų dimensijų aibė
+#  ## Dviejų dimensijų aibė
 
 # %%
 rf_results_pca = []
@@ -283,8 +317,9 @@ for rf_params in ParameterGrid(rf_param_grid):
 rf_results_pca_df = pd.DataFrame(rf_results_pca).sort_values('val_acc', ascending=False).reset_index(drop=True)
 rf_results_pca_df
 
+
 # %% [markdown]
-# Prasti popieriai, PCA duomenų aibė labai pablogina rezultatus - validacijos aibė realiai spėlioja duomenis, o klasifikacvimo tikslumas (ten kur validacija geriausia) sieki tik 0,767...
+#  Prasti popieriai, PCA duomenų aibė labai pablogina rezultatus - validacijos aibė realiai spėlioja duomenis, o klasifikacvimo tikslumas (ten kur validacija geriausia) sieki tik 0,767...
 
 # %%
 best_rf_pca = RandomForestClassifier(
@@ -293,12 +328,14 @@ best_rf_pca = RandomForestClassifier(
 ).fit(X_train_pca, y_train)
 
 
+
 # %%
 y_test_pred_rf_pca = best_rf_pca.predict(X_test_pca)
 test_acc_rf_pca = best_rf_pca.score(X_test_pca, y_test)
 
 print(f"Test accuracy: {test_acc_rf_pca :.4f}\n")
 print(classification_report(y_test, y_test_pred_rf_pca, digits=3))
+
 
 # %%
 cm_test_rf_pca = confusion_matrix(y_test, y_test_pred_rf_pca, labels=["Winter", "Spring", "Summer", "Autumn"])
@@ -312,6 +349,7 @@ disp_rf_pca.ax_.set_ylabel("Tikroji klasė")
 plt.title("Atsitiktinių miškų sumaišymo matrica - testinė aibė (PCA)")
 plt.tight_layout()
 plt.show()
+
 
 # %%
 def plot_classification_pca(X_test_pca, y_test, y_pred, title):
@@ -358,14 +396,126 @@ def plot_classification_pca(X_test_pca, y_test, y_pred, title):
     plt.tight_layout()
     plt.show()
 
+
 # %%
 plot_classification_pca(X_test_pca, y_test, y_test_pred_rf,
                         title="Atsitiktinių miškų klasifikavimas PCA erdvėje")
 
-# %% [markdown]
-# #Todo: labiau pasižiūėti kuo klaidos išsiskiria (tiketina, kad bus tie taskai, kurie yra perainamajame laikotarpyje ruduo -> ziema, ziema -> pavasaris, pavasaris -> vasara, vasara -> ruduo)
 
 # %% [markdown]
-# 
+#  #Todo: labiau pasižiūėti kuo klaidos išsiskiria (tiketina, kad bus tie taskai, kurie yra perainamajame laikotarpyje ruduo -> ziema, ziema -> pavasaris, pavasaris -> vasara, vasara -> ruduo)
+
+# %% [markdown]
+# # Support vector classifier
+
+# %% [markdown]
+# ## Tinklelio paieška
+
+# %%
+
+pipe = Pipeline([
+    ("scaler", RobustScaler()),
+    ("svm", SVC())
+])
+
+param_grid = {	
+    "svm__C": [0.1, 1, 10, 50, 100],
+    "svm__kernel": ["linear", "rbf", "poly"],
+    "svm__gamma": ["scale", 0.01, 0.1, 1]
+}
+
+grid = GridSearchCV(
+    estimator=pipe,
+    param_grid=param_grid,
+    cv=5,
+    scoring="accuracy"
+)
+
+grid.fit(X_train, y_train)
+
+print(grid.best_params_)
+print(grid.best_score_)
+
+# %%
+display(pd.DataFrame(grid.cv_results_).sort_values("mean_test_score", ascending=False))
+
+
+# %%
+param_grid_2 = {
+    "svm__C": np.linspace(50, 100, 10),
+    "svm__kernel": ["rbf"],
+    "svm__gamma": np.linspace(0.1, 1, 10) 
+}
+
+grid = GridSearchCV(
+    estimator=pipe,
+    param_grid=param_grid_2,
+    cv=5,
+    scoring="accuracy"
+)
+
+grid.fit(X_train, y_train)
+
+print(grid.best_params_)
+print(grid.best_score_)
+
+# %%
+display(pd.DataFrame(grid.cv_results_).sort_values("mean_test_score", ascending=False))
+
+# %%
+svm_final = grid.best_estimator_
+test_score = svm_final.score(X_temp, y_temp)
+print(f"SVM test accuracy: {test_score:.4f}")
+
+# %%
+y_pred = svm_final.predict(X_temp)
+labels_lt = ["Ruduo", "Pavasaris", "Vasara", "Žiema"]  
+labels_en = ["Autumn", "Spring", "Summer", "Winter"]
+
+print(classification_report(y_temp, y_pred))
+
+cm = confusion_matrix(y_temp, y_pred, labels=labels_en)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels_lt)
+disp.plot(cmap="Blues")
+disp.ax_.set_xlabel("Prognozuota klasė")
+disp.ax_.set_ylabel("Tikroji klasė")
+plt.title("SVM sumaišymo matrica - testinė aibė")
+plt.tight_layout()
+plt.show()
+
+# %%
+print("Balanced accuracy:", balanced_accuracy_score(y_temp, y_pred))
+print("Macro precision:", precision_score(y_temp, y_pred, average="macro"))
+print("Macro recall:", recall_score(y_temp, y_pred, average="macro"))
+print("Macro F1:", f1_score(y_temp, y_pred, average="macro"))
+
+# %%
+y_score = svm_final.decision_function(X_temp)
+
+classes = svm_final.classes_
+y_temp_bin = label_binarize(y_temp, classes=classes)
+
+plt.figure(figsize=(8, 6))
+
+for i, class_name in enumerate(classes):
+    class_name_lt = {
+		"Winter": "Žiema",
+		"Spring": "Pavasaris",
+		"Summer": "Vasara",
+		"Autumn": "Ruduo"
+	}.get(class_name, class_name)
+    fpr, tpr, _ = roc_curve(y_temp_bin[:, i], y_score[:, i])
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(fpr, tpr, label=f"Klasė {class_name_lt} AUC = {roc_auc:.3f}")
+
+plt.plot([0, 1], [0, 1], linestyle="--", label="Atsitiktinis klasifikatorius")
+
+plt.xlabel("1-Specifiškumas (FPR)")
+plt.ylabel("Jautrumas (TPR)")
+plt.title("SVM ROC kreivės - testinė aibė")
+plt.legend()
+plt.grid(True)
+plt.show()
 
 
