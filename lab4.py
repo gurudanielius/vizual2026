@@ -3,13 +3,15 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import ParameterGrid, StratifiedKFold, train_test_split
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.model_selection import ParameterGrid, train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.preprocessing import RobustScaler, StandardScaler, label_binarize
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS, TSNE, trustworthiness
 from sklearn.metrics import pairwise_distances
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, ConfusionMatrixDisplay
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, ConfusionMatrixDisplay, roc_curve, auc, roc_auc_score
+from sklearn.pipeline import Pipeline
+from sklearn.neighbors import KNeighborsClassifier
 import warnings
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import roc_curve, auc
@@ -169,7 +171,7 @@ print(final_dataset_melted[["power","season"]].groupby("season").describe())
 
 
 # %% [markdown]
-# # Duomenų padalinimas
+#  # Duomenų padalinimas
 
 # %%
 X = final_dataset.drop(columns=["season", "Day", "month"])
@@ -181,7 +183,7 @@ X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.2, stratif
 X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=80085)
 
 # %% [markdown]
-# # Dimensijos mažinimas
+#  # Dimensijos mažinimas
 
 # %%
 def normalized_stress(X, X_emb):
@@ -202,8 +204,9 @@ def emb_metrics(X_orig, X_emb, n_neighbors=10):
     print(f"Stress:          {stress:.4f}")
 
 # %% [markdown]
-# ### PCA
-# Praeitame laboratoriniame darbe naudotas tas pats duomenų rinkinys ir ten gauta, kad geriausias dimensijos mažinimo algoritmas yra PCA. Šiame laboratorinyje taip pat naudosime PCA.
+#  ### PCA
+# 
+#  Praeitame laboratoriniame darbe naudotas tas pats duomenų rinkinys ir ten gauta, kad geriausias dimensijos mažinimo algoritmas yra PCA. Šiame laboratorinyje taip pat naudosime PCA.
 
 # %%
 pca_model = PCA(n_components=2, random_state=80085)
@@ -220,17 +223,24 @@ X_val_pca   = pca_model.transform(X_scaled_val)
 X_test_pca  = pca_model.transform(X_scaled_test)
 
 # %% [markdown]
-# # Atsitiktinių miškų klasifikatorius
+#  # Atsitiktinių miškų klasifikatorius
 # 
-# **Pagrindiniai hiperparametrai:**
-# 1. n_estimators 
-# 2. max_depth 
-# 3. min_samples_split 
-# 4. min_samples_leaf
-# 5. max_features 
+# 
+# 
+#  **Pagrindiniai hiperparametrai:**
+# 
+#  1. n_estimators
+# 
+#  2. max_depth
+# 
+#  3. min_samples_split
+# 
+#  4. min_samples_leaf
+# 
+#  5. max_features
 
 # %% [markdown]
-# ## Originali duomenų aibė
+#  ## Originali duomenų aibė
 
 # %% [markdown]
 # ### Holdout
@@ -592,7 +602,7 @@ holdout_results_pca = rf_holdout(X_train_pca, y_train, X_val_pca, y_val, rf_para
 holdout_results_pca
 
 # %% [markdown]
-# Prasti popieriai, PCA duomenų aibė labai pablogina rezultatus - validacijos aibė realiai spėlioja duomenis, o klasifikacvimo tikslumas (ten kur validacija geriausia) sieki tik 0,767...
+#  Prasti popieriai, PCA duomenų aibė labai pablogina rezultatus - validacijos aibė realiai spėlioja duomenis, o klasifikacvimo tikslumas (ten kur validacija geriausia) sieki tik 0,767...
 
 # %%
 best_holdout_params_pca = holdout_results_pca.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
@@ -821,6 +831,229 @@ mistakes_summary_rf_pca = pd.DataFrame({
 mistakes_summary_rf_pca
 
 # %% [markdown]
+# # k-NN klasifikatorius
 # 
+# **Pagrindiniai hiperparametrai:**
+# 1. n_neighbors
+# 2. weights
+# 3. metric
+
+# %%
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=80085)
+
+knn_param_grid = {
+    "knn__n_neighbors": [1, 3, 5, 7, 9, 10, 15, 20, 30],
+    "knn__weights": ["uniform", "distance"],
+    "knn__metric": ["euclidean", "manhattan", "cosine"]
+}
+
+# %% [markdown]
+# ## Originali duomenų aibė
+
+# %%
+knn_pipe = Pipeline([
+    ("scaler", RobustScaler()),
+    ("knn", KNeighborsClassifier())
+])
+
+grid_knn = GridSearchCV(
+    estimator=knn_pipe,
+    param_grid=knn_param_grid,
+    cv=cv,
+    scoring="accuracy",
+    n_jobs=-1
+)
+
+grid_knn.fit(X_train, y_train)
+
+print("Best CV accuracy:", grid_knn.best_score_)
+print("Best parameters:", grid_knn.best_params_)
+
+# %%
+knn_results_df = pd.DataFrame(grid_knn.cv_results_)
+
+knn_results_df = knn_results_df[
+    [
+        "param_knn__n_neighbors",
+        "param_knn__weights",
+        "param_knn__metric",
+        "mean_test_score",
+        "std_test_score",
+        "rank_test_score"
+    ]
+].sort_values("rank_test_score").reset_index(drop=True)
+
+knn_results_df
+
+# %%
+best_knn = grid_knn.best_estimator_
+
+y_test_pred_knn = best_knn.predict(X_test)
+
+test_acc_knn = best_knn.score(X_test, y_test)
+print(f"Test accuracy: {test_acc_knn:.4f}\n")
+print(classification_report(y_test, y_test_pred_knn, digits=3))
+
+# %%
+cm_test_knn = confusion_matrix(
+    y_test,
+    y_test_pred_knn,
+    labels=["Winter", "Spring", "Summer", "Autumn"]
+)
+
+disp_knn = ConfusionMatrixDisplay(
+    cm_test_knn,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+
+disp_knn.plot(cmap="Blues")
+disp_knn.ax_.set_xlabel("Prognozuota klasė")
+disp_knn.ax_.set_ylabel("Tikroji klasė")
+plt.title("k-NN sumaišymo matrica - testinė aibė")
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ## Dviejų dimensijų aibė
+
+# %%
+knn_param_grid_pca = {
+    "n_neighbors": [1, 3, 5, 7, 9, 10, 15, 20, 30],
+    "weights": ["uniform", "distance"],
+    "metric": ["euclidean", "manhattan", "cosine"]
+}
+
+grid_knn_pca = GridSearchCV(
+    estimator=KNeighborsClassifier(),
+    param_grid=knn_param_grid_pca,
+    cv=cv,
+    scoring="accuracy",
+    n_jobs=-1
+)
+
+grid_knn_pca.fit(X_train_pca, y_train)
+
+print("Best PCA CV accuracy:", grid_knn_pca.best_score_)
+print("Best PCA parameters:", grid_knn_pca.best_params_)
+
+# %%
+knn_results_pca_df = pd.DataFrame(grid_knn_pca.cv_results_)
+
+knn_results_pca_df = knn_results_pca_df[
+    [
+        "param_n_neighbors",
+        "param_weights",
+        "param_metric",
+        "mean_test_score",
+        "std_test_score",
+        "rank_test_score"
+    ]
+].sort_values("rank_test_score").reset_index(drop=True)
+
+knn_results_pca_df
+
+# %%
+best_knn_pca = grid_knn_pca.best_estimator_
+
+y_test_pred_knn_pca = best_knn_pca.predict(X_test_pca)
+
+test_acc_knn_pca = best_knn_pca.score(X_test_pca, y_test)
+
+print(f"Test accuracy: {test_acc_knn_pca:.4f}\n")
+print(classification_report(y_test, y_test_pred_knn_pca, digits=3))
+
+# %%
+cm_test_knn_pca = confusion_matrix(
+    y_test,
+    y_test_pred_knn_pca,
+    labels=["Winter", "Spring", "Summer", "Autumn"]
+)
+
+disp_knn_pca = ConfusionMatrixDisplay(
+    cm_test_knn_pca,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+
+disp_knn_pca.plot(cmap="Blues")
+disp_knn_pca.ax_.set_xlabel("Prognozuota klasė")
+disp_knn_pca.ax_.set_ylabel("Tikroji klasė")
+plt.title("k-NN sumaišymo matrica - testinė aibė (PCA)")
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ## Roc originalioj
+
+# %%
+classes = ["Winter", "Spring", "Summer", "Autumn"]
+
+# tikimybės
+y_test_proba_knn = best_knn.predict_proba(X_test)
+
+# binarinės klasės
+y_test_bin = label_binarize(y_test, classes=classes)
+
+# macro AUC
+auc_macro_knn = roc_auc_score(
+    y_test_bin,
+    y_test_proba_knn,
+    average="macro",
+    multi_class="ovr"
+)
+
+print(f"Macro AUC: {auc_macro_knn:.4f}")
+
+# %%
+plt.figure(figsize=(6, 4))
+
+for i, cls in enumerate(classes):
+    fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_test_proba_knn[:, i])
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(
+        fpr,
+        tpr,
+        label=f"{cls} AUC = {roc_auc:.2f}"
+    )
+
+plt.plot([0, 1], [0, 1], "k--")
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("k-NN ROC kreivės")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ## Klaidos originalioj Knn
+
+# %%
+errors_knn = X_test[y_test != y_test_pred_knn].copy()
+
+errors_knn["True"] = y_test[y_test != y_test_pred_knn]
+errors_knn["Predicted"] = y_test_pred_knn[y_test != y_test_pred_knn]
+
+errors_knn.head()
+
+# %%
+print(f"Klaidų skaičius: {len(errors_knn)}")
+
+# %%
+pd.crosstab(
+    errors_knn["True"],
+    errors_knn["Predicted"]
+)
+
+# %% [markdown]
+# ## Klaidos PCA knn
+
+# %%
+plot_classification_pca(
+    X_test_pca,
+    y_test,
+    y_test_pred_knn_pca,
+    title="k-NN klasifikavimas PCA erdvėje"
+)
 
 
