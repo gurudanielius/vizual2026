@@ -1,14 +1,17 @@
 # %%
 import pandas as pd
 import numpy as np
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import ParameterGrid, train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.preprocessing import RobustScaler, StandardScaler, label_binarize
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS, TSNE, trustworthiness
-from sklearn.metrics import pairwise_distances
+from sklearn.metrics import (pairwise_distances, classification_report, confusion_matrix, 
+                           accuracy_score, ConfusionMatrixDisplay, balanced_accuracy_score, 
+                           recall_score, f1_score, precision_score, roc_curve, auc, roc_auc_score)
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, ConfusionMatrixDisplay, roc_curve, auc, roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.neighbors import KNeighborsClassifier
@@ -321,6 +324,7 @@ print(classification_report(y_test, y_test_pred_rf_holdout, digits=3))
 
 # %% [markdown]
 #  ### Kryzmine validacija
+
 
 # %%
 def rf_cv(X, y, param_grid, cv=5, random_state=80085):
@@ -678,6 +682,7 @@ print(classification_report(y_test, y_test_pred_rf_pca_holdout, digits=3))
 
 # %% [markdown]
 #  ### Kryzmine validavija
+
 
 # %%
 X_trainval_pca = np.concatenate([X_train_pca, X_val_pca])
@@ -1154,5 +1159,115 @@ plot_classification_pca(
 
 
 
+# %% [markdown]
+# # Support vector classifier
+
+# %% [markdown]
+# ## Tinklelio paieška
+
+# %%
+
+pipe = Pipeline([
+    ("scaler", RobustScaler()),
+    ("svm", SVC())
+])
+
+param_grid = {	
+    "svm__C": [0.1, 1, 10, 50, 100],
+    "svm__kernel": ["linear", "rbf", "poly"],
+    "svm__gamma": ["scale", 0.01, 0.1, 1]
+}
+
+grid = GridSearchCV(
+    estimator=pipe,
+    param_grid=param_grid,
+    cv=5,
+    scoring="accuracy"
+)
+
+grid.fit(X_train, y_train)
+
+print(grid.best_params_)
+print(grid.best_score_)
+
+# %%
+display(pd.DataFrame(grid.cv_results_).sort_values("mean_test_score", ascending=False))
 
 
+# %%
+param_grid_2 = {
+    "svm__C": np.linspace(50, 100, 10),
+    "svm__kernel": ["rbf"],
+    "svm__gamma": np.linspace(0.1, 1, 10) 
+}
+
+grid = GridSearchCV(
+    estimator=pipe,
+    param_grid=param_grid_2,
+    cv=5,
+    scoring="accuracy"
+)
+
+grid.fit(X_train, y_train)
+
+print(grid.best_params_)
+print(grid.best_score_)
+
+# %%
+display(pd.DataFrame(grid.cv_results_).sort_values("mean_test_score", ascending=False))
+
+# %%
+svm_final = grid.best_estimator_
+test_score = svm_final.score(X_temp, y_temp)
+print(f"SVM test accuracy: {test_score:.4f}")
+
+# %%
+y_pred = svm_final.predict(X_temp)
+labels_lt = ["Ruduo", "Pavasaris", "Vasara", "Žiema"]  
+labels_en = ["Autumn", "Spring", "Summer", "Winter"]
+
+print(classification_report(y_temp, y_pred))
+
+cm = confusion_matrix(y_temp, y_pred, labels=labels_en)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels_lt)
+disp.plot(cmap="Blues")
+disp.ax_.set_xlabel("Prognozuota klasė")
+disp.ax_.set_ylabel("Tikroji klasė")
+plt.title("SVM sumaišymo matrica - testinė aibė")
+plt.tight_layout()
+plt.show()
+
+# %%
+print("Balanced accuracy:", balanced_accuracy_score(y_temp, y_pred))
+print("Macro precision:", precision_score(y_temp, y_pred, average="macro"))
+print("Macro recall:", recall_score(y_temp, y_pred, average="macro"))
+print("Macro F1:", f1_score(y_temp, y_pred, average="macro"))
+
+# %%
+y_score = svm_final.decision_function(X_temp)
+
+classes = svm_final.classes_
+y_temp_bin = label_binarize(y_temp, classes=classes)
+
+plt.figure(figsize=(8, 6))
+
+for i, class_name in enumerate(classes):
+    class_name_lt = {
+		"Winter": "Žiema",
+		"Spring": "Pavasaris",
+		"Summer": "Vasara",
+		"Autumn": "Ruduo"
+	}.get(class_name, class_name)
+    fpr, tpr, _ = roc_curve(y_temp_bin[:, i], y_score[:, i])
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(fpr, tpr, label=f"Klasė {class_name_lt} AUC = {roc_auc:.3f}")
+
+plt.plot([0, 1], [0, 1], linestyle="--", label="Atsitiktinis klasifikatorius")
+
+plt.xlabel("1-Specifiškumas (FPR)")
+plt.ylabel("Jautrumas (TPR)")
+plt.title("SVM ROC kreivės - testinė aibė")
+plt.legend()
+plt.grid(True)
+plt.show()
