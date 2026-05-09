@@ -3,8 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import warnings
-from sklearn.model_selection import ParameterGrid, train_test_split, GridSearchCV
+from sklearn.model_selection import ParameterGrid, train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.preprocessing import RobustScaler, StandardScaler, label_binarize
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS, TSNE, trustworthiness
@@ -12,8 +11,15 @@ from sklearn.metrics import (pairwise_distances, classification_report, confusio
                            accuracy_score, ConfusionMatrixDisplay, balanced_accuracy_score, 
                            recall_score, f1_score, precision_score, roc_curve, auc, roc_auc_score)
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, ConfusionMatrixDisplay, roc_curve, auc, roc_auc_score
+from sklearn.pipeline import Pipeline
+from sklearn.neighbors import KNeighborsClassifier
+import warnings
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.metrics import roc_curve, auc
+from sklearn.preprocessing import label_binarize
+
 
 # %%
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
@@ -172,6 +178,13 @@ plt.tight_layout()
 plt.show()
 
 
+# %%
+#Skaitines charakteristikos pagal sezona
+print(final_dataset_melted[["power","season"]].groupby("season").describe())
+
+
+# %%
+
 
 # %% [markdown]
 #  # Duomenų padalinimas
@@ -229,7 +242,6 @@ X_train_pca = pca_model.fit_transform(X_scaled_train)
 X_val_pca   = pca_model.transform(X_scaled_val)
 X_test_pca  = pca_model.transform(X_scaled_test)
 
-
 # %% [markdown]
 #  # Atsitiktinių miškų klasifikatorius
 # 
@@ -250,6 +262,9 @@ X_test_pca  = pca_model.transform(X_scaled_test)
 # %% [markdown]
 #  ## Originali duomenų aibė
 
+# %% [markdown]
+# ### Holdout
+
 # %%
 rf_param_grid = {
     'n_estimators': [50, 200, 500],
@@ -257,96 +272,501 @@ rf_param_grid = {
     'max_features': ['sqrt', 'log2', 0.5],
 }
 
-rf_results = []
-for rf_params in ParameterGrid(rf_param_grid):
-    rf_model = RandomForestClassifier(**rf_params, random_state=80085, n_jobs=-1).fit(X_train, y_train)
-    rf_results.append({
-        **rf_params,
-        'train_acc': rf_model.score(X_train, y_train),
-        'val_acc': rf_model.score(X_val, y_val),
-    })
+def rf_holdout(X_train, y_train, X_val, y_val, param_grid, random_state=80085):
+    results = []
+    for params in ParameterGrid(param_grid):
+        rf = RandomForestClassifier(**params, random_state=random_state, n_jobs=-1).fit(X_train, y_train)
+        results.append({
+            **params,
+            'train_acc': rf.score(X_train, y_train),
+            'val_acc': rf.score(X_val, y_val),
+        })
+    return pd.DataFrame(results).sort_values('val_acc', ascending=False).reset_index(drop=True)
 
-rf_results_df = pd.DataFrame(rf_results).sort_values('val_acc', ascending=False).reset_index(drop=True)
-rf_results_df
+holdout_results = rf_holdout(X_train, y_train, X_val, y_val, rf_param_grid)
 
 
 # %%
-best_rf = RandomForestClassifier(
-    max_depth=10, max_features=0.5, n_estimators=50,
+holdout_results
+
+# %%
+best_holdout_params = holdout_results.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
+best_holdout_params["n_estimators"] = int(best_holdout_params["n_estimators"])
+best_holdout_params["max_depth"] = None if best_holdout_params["max_depth"] == "None" else int(best_holdout_params["max_depth"])
+
+best_rf_holdout = RandomForestClassifier(
+    **best_holdout_params,
     random_state=80085
 ).fit(X_train, y_train)
 
-test_acc_rf = best_rf.score(X_test, y_test)
-print(f"Test accuracy: {test_acc_rf :.4f}")
+test_acc_rf_holdout = best_rf_holdout.score(X_test, y_test)
+print(f"Test accuracy HOLDOUT: {test_acc_rf_holdout:.4f}")
 
 
 # %%
-y_test_pred_rf = best_rf.predict(X_test)
+y_test_pred_rf_holdout = best_rf_holdout.predict(X_test)
 
-print(f"Test accuracy: {best_rf.score(X_test, y_test):.4f}\n")
-print(classification_report(y_test, y_test_pred_rf, digits=3))
+print(f"Test accuracy HOLDOUT: {best_rf_holdout.score(X_test, y_test):.4f}\n")
+print(classification_report(y_test, y_test_pred_rf_holdout, digits=3))
+
+# %% [markdown]
+# ### Kryzmine validacija
 
 
 # %%
-cm_test_rf = confusion_matrix(y_test, y_test_pred_rf, labels=["Winter", "Spring", "Summer", "Autumn"])
-disp_rf = ConfusionMatrixDisplay(
-    cm_test_rf,
+def rf_cv(X, y, param_grid, cv=5, random_state=80085):
+    skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=random_state)
+    results = []
+    for params in ParameterGrid(param_grid):
+        rf = RandomForestClassifier(**params, random_state=random_state, n_jobs=-1)
+        scores = cross_val_score(rf, X, y, cv=skf, scoring='accuracy', n_jobs=-1)
+        results.append({
+            **params,
+            'mean_acc': scores.mean(),
+            'std_acc': scores.std(),
+        })
+    return pd.DataFrame(results).sort_values('mean_acc', ascending=False).reset_index(drop=True)
+
+# sujungiam train ir val nes cv nereikia validaciijos aibes
+X_trainval = pd.concat([X_train, X_val])
+y_trainval = pd.concat([y_train, y_val])
+
+cv_results = rf_cv(X_trainval, y_trainval, rf_param_grid, cv=5)
+cv_results
+
+# %%
+best_cv_params = cv_results.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
+best_cv_params["n_estimators"] = int(best_cv_params["n_estimators"])
+best_cv_params["max_depth"] = None if pd.isna(best_cv_params["max_depth"]) else int(best_cv_params["max_depth"])
+
+best_rf_cv = RandomForestClassifier(
+    **best_cv_params,
+    random_state=80085
+).fit(X_trainval, y_trainval)
+
+test_acc_rf_cv = best_rf_cv.score(X_test, y_test)
+print(f"Test accuracy CV: {test_acc_rf_cv:.4f}")
+
+# %%
+y_test_pred_rf_CV = best_rf_cv.predict(X_test)
+
+print(f"Test accuracy CV: {best_rf_cv.score(X_test, y_test):.4f}\n")
+print(classification_report(y_test, y_test_pred_rf_CV, digits=3))
+
+# %% [markdown]
+# ### Bootstrap
+
+# %%
+#KODAS TRUNKA 4 MINUTES RUN AT YOU OWN RISK
+def rf_bootstrap(X, y, param_grid, n_iter=30, random_state=80085):
+    rng = np.random.default_rng(random_state)
+    results = []
+    
+    for params in ParameterGrid(param_grid):
+        scores = []
+        for i in range(n_iter):
+            # Atsitiktinis sampling su pakartojimais
+            idx = rng.choice(len(X), size=len(X), replace=True)
+            oob_idx = np.setdiff1d(np.arange(len(X)), idx)
+            
+            if len(oob_idx) < 5:
+                continue
+            
+            X_boot = X.iloc[idx] if hasattr(X, "iloc") else X[idx]
+            y_boot = y.iloc[idx] if hasattr(y, "iloc") else y[idx]
+            X_oob = X.iloc[oob_idx] if hasattr(X, "iloc") else X[oob_idx]
+            y_oob = y.iloc[oob_idx] if hasattr(y, "iloc") else y[oob_idx]
+            
+            rf = RandomForestClassifier(**params, random_state=random_state, n_jobs=-1).fit(X_boot, y_boot)
+            scores.append(rf.score(X_oob, y_oob))
+        
+        results.append({
+            **params,
+            'mean_acc': np.mean(scores),
+            'std_acc': np.std(scores),
+        })
+    return pd.DataFrame(results).sort_values('mean_acc', ascending=False).reset_index(drop=True)
+
+bootstrap_results = rf_bootstrap(X_trainval, y_trainval, rf_param_grid, n_iter=10)
+
+
+# %%
+bootstrap_results
+
+# %%
+best_boot_params = bootstrap_results.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
+best_boot_params["n_estimators"] = int(best_boot_params["n_estimators"])
+best_boot_params["max_depth"] = None if pd.isna(best_boot_params["max_depth"]) else int(best_boot_params["max_depth"])
+
+best_rf_boot = RandomForestClassifier(
+    **best_boot_params,
+    random_state=80085
+).fit(X_trainval, y_trainval)
+
+test_acc_rf_boot = best_rf_boot.score(X_test, y_test)
+print(f"Test accuracy BOOTSTRAP: {test_acc_rf_boot:.4f}")
+
+# %%
+y_test_pred_rf_boot = best_rf_boot.predict(X_test)
+
+print(f"Test accuracy BOOTSTRAP: {best_rf_boot.score(X_test, y_test):.4f}\n")
+print(classification_report(y_test, y_test_pred_rf_boot, digits=3))
+
+# %%
+#LYGINAM testines
+print("=== HOLDOUT ===")
+print(test_acc_rf_holdout)
+print("\n=== 5-FOLD CV ===")
+print(test_acc_rf_cv)
+print("\n=== BOOTSTRAP ===")
+print(test_acc_rf_boot) #=> geriausias modelis holdout ir cv
+
+# %% [markdown]
+# ### ROC
+
+# %%
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+from sklearn.preprocessing import label_binarize
+
+def plot_roc_curves_combined(models_dict, X_test, y_test, suptitle="ROC kreivių palyginimas"):
+    season_lt = {"Winter": "Žiema", "Spring": "Pavasaris",
+                 "Summer": "Vasara", "Autumn": "Ruduo"}
+    season_colors = {"Winter": "#4C78A8", "Spring": "#59A14F",
+                     "Summer": "#F28E2B", "Autumn": "#9C755F"}
+    classes = ["Winter", "Spring", "Summer", "Autumn"]
+    
+    y_test_bin = label_binarize(y_test, classes=classes)
+    
+    n_models = len(models_dict)
+    fig, axes = plt.subplots(1, n_models, figsize=(9 * n_models, 9))
+    if n_models == 1:
+        axes = [axes]
+    
+    auc_scores_all = {}
+    
+    for ax, (name, model) in zip(axes, models_dict.items()):
+        model_classes = list(model.classes_)
+        class_order_idx = [model_classes.index(c) for c in classes]
+        y_score = model.predict_proba(X_test)[:, class_order_idx]
+        
+        auc_scores = {}
+        for i, season in enumerate(classes):
+            fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+            roc_auc = auc(fpr, tpr)
+            auc_scores[season] = roc_auc
+            
+            ax.plot(fpr, tpr, color=season_colors[season], linewidth=3,
+                    label=f"{season_lt[season]} (AUC = {roc_auc:.3f})")
+        
+        auc_scores_all[name] = auc_scores
+        macro_auc = np.mean(list(auc_scores.values()))
+        
+        ax.plot([0, 1], [0, 1], "k--", linewidth=1.5, alpha=0.5, label="Atsitiktinis")
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([0.0, 1.05])
+        ax.set_xlabel("FPR", fontsize=16)
+        ax.set_ylabel("TPR", fontsize=16)
+        ax.set_title(f"{name}\nMacro AUC = {macro_auc:.3f}", fontsize=18)
+        ax.legend(loc="lower right", fontsize=16)
+        ax.grid(alpha=0.3)
+        ax.tick_params(axis="both", labelsize=16)
+        ax.set_aspect("equal")
+    
+    plt.suptitle(suptitle, fontsize=20)
+    plt.tight_layout()
+    plt.show()
+    
+    return auc_scores_all
+
+# %%
+auc_all = plot_roc_curves_combined(
+    {
+        "Holdout": best_rf_holdout,
+        "CV": best_rf_cv,
+        "Bootstrap": best_rf_boot,
+    },
+    X_test, y_test,
+    suptitle=""
+)
+
+# %% [markdown]
+# #TODO: pasitarti kuri strategija geriausia 
+# Pagal ROC kreives geriausias yra bootstrap modelis - didziausias macro AUC
+
+# %%
+cm_test_rf_holdout = confusion_matrix(y_test, y_test_pred_rf_holdout, labels=["Winter", "Spring", "Summer", "Autumn"])
+disp_rf_holdout = ConfusionMatrixDisplay(
+    cm_test_rf_holdout,
     display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
 )
-disp_rf.plot(cmap="Blues")
-disp_rf.ax_.set_xlabel("Prognozuota klasė")
-disp_rf.ax_.set_ylabel("Tikroji klasė")
-plt.title("Atsitiktinių miškų sumaišymo matrica - testinė aibė")
+disp_rf_holdout.plot(cmap="Blues")
+disp_rf_holdout.ax_.set_xlabel("Prognozuota klasė")
+disp_rf_holdout.ax_.set_ylabel("Tikroji klasė")
+plt.title("Atsitiktinių miškų sumaišymo matrica - holdout")
+plt.tight_layout()
+plt.show()
+
+# %%
+cm_test_rf_CV = confusion_matrix(y_test, y_test_pred_rf_CV, labels=["Winter", "Spring", "Summer", "Autumn"])
+disp_rf_CV = ConfusionMatrixDisplay(
+    cm_test_rf_CV,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+disp_rf_CV.plot(cmap="Blues")
+disp_rf_CV.ax_.set_xlabel("Prognozuota klasė")
+disp_rf_CV.ax_.set_ylabel("Tikroji klasė")
+plt.title("Atsitiktinių miškų sumaišymo matrica - kryžminė validacija")
+plt.tight_layout()
+plt.show()
+
+# %%
+cm_test_rf_boot = confusion_matrix(y_test, y_test_pred_rf_boot, labels=["Winter", "Spring", "Summer", "Autumn"])
+disp_rf_boot = ConfusionMatrixDisplay(
+    cm_test_rf_boot,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+disp_rf_boot.plot(cmap="Blues")
+disp_rf_boot.ax_.set_xlabel("Prognozuota klasė")
+disp_rf_boot.ax_.set_ylabel("Tikroji klasė")
+plt.title("Atsitiktinių miškų sumaišymo matrica - bootstrap")
 plt.tight_layout()
 plt.show()
 
 
 # %% [markdown]
-#  ## Dviejų dimensijų aibė
+# ### Klaidu tyrimas
+# Dabar fiksuotas bootstrap'as
 
 # %%
-rf_results_pca = []
-for rf_params in ParameterGrid(rf_param_grid):
-    rf_model = RandomForestClassifier(**rf_params, random_state=80085, n_jobs=-1).fit(X_train_pca, y_train)
-    rf_results_pca.append({
-        **rf_params,
-        'train_acc': rf_model.score(X_train_pca, y_train),
-        'val_acc': rf_model.score(X_val_pca, y_val),
-    })
+#Neteisingai suklasifikuoti tašku tyrimas
+mistakes_rf = X_test.copy()
+mistakes_rf.insert(0, "True", np.array(y_test))
+mistakes_rf.insert(1, "Predicted", y_test_pred_rf_boot)
+mistakes_rf = mistakes_rf[mistakes_rf["True"] != mistakes_rf["Predicted"]]
+mistakes_rf
 
-rf_results_pca_df = pd.DataFrame(rf_results_pca).sort_values('val_acc', ascending=False).reset_index(drop=True)
-rf_results_pca_df
+# %%
+def plot_misclassified_profiles(mistakes_df, final_dataset, time_cols, suptitle):
+    season_lt = {"Winter": "Žiema", "Spring": "Pavasaris", 
+                 "Summer": "Vasara", "Autumn": "Ruduo"}
+    
+    # Sezonų vidurkiai iš VISO dataset'o
+    season_means = {}
+    for season in ["Winter", "Spring", "Summer", "Autumn"]:
+        mask = final_dataset["season"] == season
+        season_means[season] = final_dataset.loc[mask, time_cols].mean(axis=0).values
+    
+    n_show = len(mistakes_df)
+    
+    # Renkam optimalų grid - kuo "kvadratiškesnis", tuo geriau
+    n_cols = int(np.ceil(np.sqrt(n_show)))
+    n_rows = int(np.ceil(n_show / n_cols))
+    
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 5*n_rows), sharey=True)
+    axes = np.array(axes).ravel() if n_show > 1 else [axes]
+    
+    for ax, (idx, row) in zip(axes, mistakes_df.iterrows()):
+        true_lbl = row["True"]
+        pred_lbl = row["Predicted"]
+        profile = row[time_cols].values.astype(float)
+        
+        ax.plot(time_cols, profile, "k-", linewidth=2.5, label="Prognozuota diena")
+        ax.plot(time_cols, season_means[true_lbl], "g--", linewidth=1.8,
+                label=f"Vid. {season_lt[true_lbl]} (T)")
+        ax.plot(time_cols, season_means[pred_lbl], "r:", linewidth=1.8,
+                label=f"Vid. {season_lt[pred_lbl]} (P)")
+        
+        ax.set_title(f"Tikra: {season_lt[true_lbl]} → Prognozuota: {season_lt[pred_lbl]}", fontsize=13)
+        ax.legend(fontsize=11)
+        ax.grid(alpha=0.3)
+        ax.set_aspect("auto")
+        ax.set_box_aspect(1)
+        
+        tick_step = 3
+        tick_positions = list(range(0, len(time_cols), tick_step))
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels([time_cols[i] for i in tick_positions], rotation=45, fontsize=11)
+        ax.tick_params(axis='y', labelsize=11)
+        ax.set_xlabel("Valanda", fontsize=12)
+    
+    for ax in axes[n_show:]:
+        ax.set_visible(False)
+    
+    plt.suptitle(suptitle, fontsize=16)
+    plt.tight_layout()
+    plt.show()
 
+# %%
+time_cols = [c for c in mistakes_rf.columns if c not in ["True", "Predicted"]]
+plot_misclassified_profiles(
+    mistakes_rf, final_dataset, time_cols,
+    suptitle=""
+)
+
+# %%
+mistakes_summary_rf = pd.DataFrame({
+    "Data": final_dataset.loc[mistakes_rf.index, "Day"].values,
+    "Tikra": mistakes_rf["True"].values,
+    "Prognozuota": mistakes_rf["Predicted"].values,
+})
+mistakes_summary_rf
+
+
+# %% [markdown]
+# ## Dviejų dimensijų aibė
+
+# %% [markdown]
+# ### Holdout
+
+# %%
+holdout_results_pca = rf_holdout(X_train_pca, y_train, X_val_pca, y_val, rf_param_grid)
+
+# %%
+holdout_results_pca
 
 # %% [markdown]
 #  Prasti popieriai, PCA duomenų aibė labai pablogina rezultatus - validacijos aibė realiai spėlioja duomenis, o klasifikacvimo tikslumas (ten kur validacija geriausia) sieki tik 0,767...
 
 # %%
-best_rf_pca = RandomForestClassifier(
-    max_depth=5, max_features="sqrt", n_estimators=200,
-    random_state=80085, n_jobs=1
+best_holdout_params_pca = holdout_results_pca.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
+best_holdout_params_pca["n_estimators"] = int(best_holdout_params_pca["n_estimators"])
+best_holdout_params_pca["max_depth"] = None if best_holdout_params_pca["max_depth"] == "None" else int(best_holdout_params_pca["max_depth"])
+
+best_rf_holdout_pca = RandomForestClassifier(
+    **best_holdout_params_pca,
+    random_state=80085
 ).fit(X_train_pca, y_train)
 
+test_acc_rf_holdout = best_rf_holdout_pca.score(X_test_pca, y_test)
+print(f"Test accuracy HOLDOUT PCA: {test_acc_rf_holdout:.4f}")
 
 
 # %%
-y_test_pred_rf_pca = best_rf_pca.predict(X_test_pca)
-test_acc_rf_pca = best_rf_pca.score(X_test_pca, y_test)
+y_test_pred_rf_pca_holdout = best_rf_holdout_pca.predict(X_test_pca)
+test_acc_rf_pca = best_rf_holdout_pca.score(X_test_pca, y_test)
 
-print(f"Test accuracy: {test_acc_rf_pca :.4f}\n")
-print(classification_report(y_test, y_test_pred_rf_pca, digits=3))
+print(f"Test accuracy HOLDOUT PCA: {test_acc_rf_pca :.4f}\n")
+print(classification_report(y_test, y_test_pred_rf_pca_holdout, digits=3))
+
+# %% [markdown]
+# ### Kryzmine validavija
 
 
 # %%
-cm_test_rf_pca = confusion_matrix(y_test, y_test_pred_rf_pca, labels=["Winter", "Spring", "Summer", "Autumn"])
-disp_rf_pca = ConfusionMatrixDisplay(
-    cm_test_rf_pca,
+X_trainval_pca = np.concatenate([X_train_pca, X_val_pca])
+y_trainval = pd.concat([y_train, y_val])
+cv_results_pca = rf_cv(X_trainval_pca, y_trainval, rf_param_grid, cv=5)
+
+# %%
+cv_results_pca
+
+# %%
+best_cv_params_pca = cv_results_pca.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
+best_cv_params_pca["n_estimators"] = int(best_cv_params_pca["n_estimators"])
+best_cv_params_pca["max_depth"] = None if best_cv_params_pca["max_depth"] == "None" else int(best_cv_params_pca["max_depth"])
+
+best_rf_cv_pca = RandomForestClassifier(
+    **best_cv_params_pca,
+    random_state=80085
+).fit(X_trainval_pca, y_trainval)
+
+test_acc_rf_cv = best_rf_cv_pca.score(X_test_pca, y_test)
+print(f"Test accuracy CV PCA: {test_acc_rf_cv:.4f}")
+
+# %%
+y_test_pred_rf_pca_cv = best_rf_cv_pca.predict(X_test_pca)
+test_acc_rf_pca = best_rf_cv_pca.score(X_test_pca, y_test)
+
+print(f"Test accuracy CV PCA: {test_acc_rf_pca :.4f}\n")
+print(classification_report(y_test, y_test_pred_rf_pca_cv, digits=3))
+
+# %% [markdown]
+# ### Bootstraping
+
+# %%
+boot_results_pca = rf_bootstrap(X_trainval_pca, y_trainval, rf_param_grid, n_iter=10)
+
+# %%
+boot_results_pca
+
+# %%
+best_boot_params_pca = boot_results_pca.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
+best_boot_params_pca["n_estimators"] = int(best_boot_params_pca["n_estimators"])
+best_boot_params_pca["max_depth"] = None if pd.isna(best_boot_params_pca["max_depth"]) else int(best_boot_params_pca["max_depth"])
+
+best_rf_boot_pca = RandomForestClassifier(
+    **best_boot_params_pca,
+    random_state=80085
+).fit(X_trainval_pca, y_trainval)
+
+test_acc_rf_boot_pca = best_rf_boot_pca.score(X_test_pca, y_test)
+print(f"Test accuracy BOOTSTRAP PCA: {test_acc_rf_boot_pca:.4f}")
+
+# %%
+y_test_pred_rf_pca_boot = best_rf_boot_pca.predict(X_test_pca)
+test_acc_rf_pca = best_rf_boot_pca.score(X_test_pca, y_test)
+
+print(f"Test accuracy BOOTSTRAP PCA: {test_acc_rf_pca :.4f}\n")
+print(classification_report(y_test, y_test_pred_rf_pca_boot, digits=3))
+
+# %% [markdown]
+# ## ROC kreives
+
+# %%
+auc_all = plot_roc_curves_combined(
+    {
+        "Holdout": best_rf_holdout_pca,
+        "CV": best_rf_cv_pca,
+        "Bootstrap": best_rf_boot_pca,
+    },
+    X_test_pca, y_test,
+    suptitle=""
+)
+
+# %% [markdown]
+# Pagal ROC kreive PCA geriausias yra holdout'as
+
+# %%
+#holdout
+cm_test_rf_pca_holdout = confusion_matrix(y_test, y_test_pred_rf_pca_holdout, labels=["Winter", "Spring", "Summer", "Autumn"])
+disp_rf_pca_holdout = ConfusionMatrixDisplay(
+    cm_test_rf_pca_holdout,
     display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
 )
-disp_rf_pca.plot(cmap="Blues")
-disp_rf_pca.ax_.set_xlabel("Prognozuota klasė")
-disp_rf_pca.ax_.set_ylabel("Tikroji klasė")
-plt.title("Atsitiktinių miškų sumaišymo matrica - testinė aibė (PCA)")
+disp_rf_pca_holdout.plot(cmap="Blues")
+disp_rf_pca_holdout.ax_.set_xlabel("Prognozuota klasė")
+disp_rf_pca_holdout.ax_.set_ylabel("Tikroji klasė")
+plt.title("Atsitiktinių miškų sumaišymo matrica - holdout PCA")
+plt.tight_layout()
+plt.show()
+
+# %%
+#cv
+cm_test_rf_pca_cv = confusion_matrix(y_test, y_test_pred_rf_pca_cv, labels=["Winter", "Spring", "Summer", "Autumn"])
+disp_rf_pca_cv = ConfusionMatrixDisplay(
+    cm_test_rf_pca_cv,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+disp_rf_pca_cv.plot(cmap="Blues")
+disp_rf_pca_cv.ax_.set_xlabel("Prognozuota klasė")
+disp_rf_pca_cv.ax_.set_ylabel("Tikroji klasė")
+plt.title("Atsitiktinių miškų sumaišymo matrica - kryžminė validacija PCA")
+plt.tight_layout()
+plt.show()
+
+# %%
+#bootstrap
+cm_test_rf_pca_bootstrap = confusion_matrix(y_test, y_test_pred_rf_pca_boot, labels=["Winter", "Spring", "Summer", "Autumn"])
+disp_rf_pca_bootstrap = ConfusionMatrixDisplay(
+    cm_test_rf_pca_bootstrap,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+disp_rf_pca_bootstrap.plot(cmap="Blues")
+disp_rf_pca_bootstrap.ax_.set_xlabel("Prognozuota klasė")
+disp_rf_pca_bootstrap.ax_.set_ylabel("Tikroji klasė")
+plt.title("Atsitiktinių miškų sumaišymo matrica - bootstrap PCA")
 plt.tight_layout()
 plt.show()
 
@@ -398,12 +818,272 @@ def plot_classification_pca(X_test_pca, y_test, y_pred, title):
 
 
 # %%
-plot_classification_pca(X_test_pca, y_test, y_test_pred_rf,
-                        title="Atsitiktinių miškų klasifikavimas PCA erdvėje")
+#holdout PCA
+plot_classification_pca(X_test_pca, y_test, y_test_pred_rf_pca_holdout, title="Atsitiktinių miškų klasifikavimas PCA erdvėje - holdout")
+
+# %%
+#cv pca
+plot_classification_pca(X_test_pca, y_test, y_test_pred_rf_pca_cv, title="Atsitiktinių miškų klasifikavimas PCA erdvėje - kryžminė validacija")
+
+# %%
+#bootstrap pca
+plot_classification_pca(X_test_pca, y_test, y_test_pred_rf_pca_boot, title="Atsitiktinių miškų klasifikavimas PCA erdvėje - bootstrap")
 
 
 # %% [markdown]
-#  #Todo: labiau pasižiūėti kuo klaidos išsiskiria (tiketina, kad bus tie taskai, kurie yra perainamajame laikotarpyje ruduo -> ziema, ziema -> pavasaris, pavasaris -> vasara, vasara -> ruduo)
+# ### Klaidu analize
+
+# %%
+#Neteisingai suklasifikuoti tašku tyrimas
+X_test_pca_df = pd.DataFrame(X_test_pca, columns=["PC1", "PC2"], index=X_test.index)
+mistakes_rf_pca = X_test_pca_df.join(X_test)
+mistakes_rf_pca.insert(0, "True", np.array(y_test))
+mistakes_rf_pca.insert(1, "Predicted", y_test_pred_rf_pca_holdout)
+mistakes_rf_pca = mistakes_rf_pca[mistakes_rf_pca["True"] != mistakes_rf_pca["Predicted"]]
+mistakes_rf_pca.drop(columns=["PC1", "PC2"], inplace=True)
+mistakes_rf_pca
+
+# %%
+plot_misclassified_profiles(
+    mistakes_rf_pca, final_dataset, time_cols,
+    suptitle=""
+)
+
+# %%
+mistakes_summary_rf_pca = pd.DataFrame({
+    "Data": final_dataset.loc[mistakes_rf_pca.index, "Day"].values,
+    "Tikra": mistakes_rf_pca["True"].values,
+    "Prognozuota": mistakes_rf_pca["Predicted"].values,
+})
+mistakes_summary_rf_pca
+
+# %% [markdown]
+# # k-NN klasifikatorius
+# 
+# **Pagrindiniai hiperparametrai:**
+# 1. n_neighbors
+# 2. weights
+# 3. metric
+
+# %%
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=80085)
+
+knn_param_grid = {
+    "knn__n_neighbors": [1, 3, 5, 7, 9, 10, 15, 20, 30],
+    "knn__weights": ["uniform", "distance"],
+    "knn__metric": ["euclidean", "manhattan", "cosine"]
+}
+
+# %% [markdown]
+# ## Originali duomenų aibė
+
+# %%
+knn_pipe = Pipeline([
+    ("scaler", RobustScaler()),
+    ("knn", KNeighborsClassifier())
+])
+
+grid_knn = GridSearchCV(
+    estimator=knn_pipe,
+    param_grid=knn_param_grid,
+    cv=cv,
+    scoring="accuracy",
+    n_jobs=-1
+)
+
+grid_knn.fit(X_train, y_train)
+
+print("Best CV accuracy:", grid_knn.best_score_)
+print("Best parameters:", grid_knn.best_params_)
+
+# %%
+knn_results_df = pd.DataFrame(grid_knn.cv_results_)
+
+knn_results_df = knn_results_df[
+    [
+        "param_knn__n_neighbors",
+        "param_knn__weights",
+        "param_knn__metric",
+        "mean_test_score",
+        "std_test_score",
+        "rank_test_score"
+    ]
+].sort_values("rank_test_score").reset_index(drop=True)
+
+knn_results_df
+
+# %%
+best_knn = grid_knn.best_estimator_
+
+y_test_pred_knn = best_knn.predict(X_test)
+
+test_acc_knn = best_knn.score(X_test, y_test)
+print(f"Test accuracy: {test_acc_knn:.4f}\n")
+print(classification_report(y_test, y_test_pred_knn, digits=3))
+
+# %%
+cm_test_knn = confusion_matrix(
+    y_test,
+    y_test_pred_knn,
+    labels=["Winter", "Spring", "Summer", "Autumn"]
+)
+
+disp_knn = ConfusionMatrixDisplay(
+    cm_test_knn,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+
+disp_knn.plot(cmap="Blues")
+disp_knn.ax_.set_xlabel("Prognozuota klasė")
+disp_knn.ax_.set_ylabel("Tikroji klasė")
+plt.title("k-NN sumaišymo matrica - testinė aibė")
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ## Dviejų dimensijų aibė
+
+# %%
+knn_param_grid_pca = {
+    "n_neighbors": [1, 3, 5, 7, 9, 10, 15, 20, 30],
+    "weights": ["uniform", "distance"],
+    "metric": ["euclidean", "manhattan", "cosine"]
+}
+
+grid_knn_pca = GridSearchCV(
+    estimator=KNeighborsClassifier(),
+    param_grid=knn_param_grid_pca,
+    cv=cv,
+    scoring="accuracy",
+    n_jobs=-1
+)
+
+grid_knn_pca.fit(X_train_pca, y_train)
+
+print("Best PCA CV accuracy:", grid_knn_pca.best_score_)
+print("Best PCA parameters:", grid_knn_pca.best_params_)
+
+# %%
+knn_results_pca_df = pd.DataFrame(grid_knn_pca.cv_results_)
+
+knn_results_pca_df = knn_results_pca_df[
+    [
+        "param_n_neighbors",
+        "param_weights",
+        "param_metric",
+        "mean_test_score",
+        "std_test_score",
+        "rank_test_score"
+    ]
+].sort_values("rank_test_score").reset_index(drop=True)
+
+knn_results_pca_df
+
+# %%
+best_knn_pca = grid_knn_pca.best_estimator_
+
+y_test_pred_knn_pca = best_knn_pca.predict(X_test_pca)
+
+test_acc_knn_pca = best_knn_pca.score(X_test_pca, y_test)
+
+print(f"Test accuracy: {test_acc_knn_pca:.4f}\n")
+print(classification_report(y_test, y_test_pred_knn_pca, digits=3))
+
+# %%
+cm_test_knn_pca = confusion_matrix(
+    y_test,
+    y_test_pred_knn_pca,
+    labels=["Winter", "Spring", "Summer", "Autumn"]
+)
+
+disp_knn_pca = ConfusionMatrixDisplay(
+    cm_test_knn_pca,
+    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
+)
+
+disp_knn_pca.plot(cmap="Blues")
+disp_knn_pca.ax_.set_xlabel("Prognozuota klasė")
+disp_knn_pca.ax_.set_ylabel("Tikroji klasė")
+plt.title("k-NN sumaišymo matrica - testinė aibė (PCA)")
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ## Roc originalioj
+
+# %%
+classes = ["Winter", "Spring", "Summer", "Autumn"]
+
+# tikimybės
+y_test_proba_knn = best_knn.predict_proba(X_test)
+
+# binarinės klasės
+y_test_bin = label_binarize(y_test, classes=classes)
+
+# macro AUC
+auc_macro_knn = roc_auc_score(
+    y_test_bin,
+    y_test_proba_knn,
+    average="macro",
+    multi_class="ovr"
+)
+
+print(f"Macro AUC: {auc_macro_knn:.4f}")
+
+# %%
+plt.figure(figsize=(6, 4))
+
+for i, cls in enumerate(classes):
+    fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_test_proba_knn[:, i])
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(
+        fpr,
+        tpr,
+        label=f"{cls} AUC = {roc_auc:.2f}"
+    )
+
+plt.plot([0, 1], [0, 1], "k--")
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("k-NN ROC kreivės")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# ## Klaidos originalioj Knn
+
+# %%
+errors_knn = X_test[y_test != y_test_pred_knn].copy()
+
+errors_knn["True"] = y_test[y_test != y_test_pred_knn]
+errors_knn["Predicted"] = y_test_pred_knn[y_test != y_test_pred_knn]
+
+errors_knn.head()
+
+# %%
+print(f"Klaidų skaičius: {len(errors_knn)}")
+
+# %%
+pd.crosstab(
+    errors_knn["True"],
+    errors_knn["Predicted"]
+)
+
+# %% [markdown]
+# ## Klaidos PCA knn
+
+# %%
+plot_classification_pca(
+    X_test_pca,
+    y_test,
+    y_test_pred_knn_pca,
+    title="k-NN klasifikavimas PCA erdvėje"
+)
+
+
 
 # %% [markdown]
 # # Support vector classifier
@@ -517,5 +1197,3 @@ plt.title("SVM ROC kreivės - testinė aibė")
 plt.legend()
 plt.grid(True)
 plt.show()
-
-
