@@ -913,253 +913,6 @@ mistakes_summary_rf_pca
 
 
 # %% [markdown]
-#  # k-NN klasifikatorius
-# 
-# 
-# 
-#  **Pagrindiniai hiperparametrai:**
-# 
-#  1. n_neighbors
-# 
-#  2. weights
-# 
-#  3. metric
-
-# %%
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=80085)
-
-knn_param_grid = {
-    "knn__n_neighbors": [1, 3, 5, 7, 9, 10, 15, 20, 30],
-    "knn__weights": ["uniform", "distance"],
-    "knn__metric": ["euclidean", "manhattan", "cosine"]
-}
-
-
-# %% [markdown]
-#  ## Originali duomenų aibė
-
-# %%
-knn_pipe = Pipeline([
-    ("scaler", RobustScaler()),
-    ("knn", KNeighborsClassifier())
-])
-
-grid_knn = GridSearchCV(
-    estimator=knn_pipe,
-    param_grid=knn_param_grid,
-    cv=cv,
-    scoring="accuracy",
-    n_jobs=-1
-)
-
-grid_knn.fit(X_train, y_train)
-
-print("Best CV accuracy:", grid_knn.best_score_)
-print("Best parameters:", grid_knn.best_params_)
-
-
-# %%
-knn_results_df = pd.DataFrame(grid_knn.cv_results_)
-
-knn_results_df = knn_results_df[
-    [
-        "param_knn__n_neighbors",
-        "param_knn__weights",
-        "param_knn__metric",
-        "mean_test_score",
-        "std_test_score",
-        "rank_test_score"
-    ]
-].sort_values("rank_test_score").reset_index(drop=True)
-
-knn_results_df
-
-
-# %%
-best_knn = grid_knn.best_estimator_
-
-y_test_pred_knn = best_knn.predict(X_test)
-
-test_acc_knn = best_knn.score(X_test, y_test)
-print(f"Test accuracy: {test_acc_knn:.4f}\n")
-print(classification_report(y_test, y_test_pred_knn, digits=3))
-
-
-# %%
-cm_test_knn = confusion_matrix(
-    y_test,
-    y_test_pred_knn,
-    labels=["Winter", "Spring", "Summer", "Autumn"]
-)
-
-disp_knn = ConfusionMatrixDisplay(
-    cm_test_knn,
-    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
-)
-
-disp_knn.plot(cmap="Blues")
-disp_knn.ax_.set_xlabel("Prognozuota klasė")
-disp_knn.ax_.set_ylabel("Tikroji klasė")
-plt.title("k-NN sumaišymo matrica - testinė aibė")
-plt.tight_layout()
-plt.show()
-
-
-# %% [markdown]
-#  ## Dviejų dimensijų aibė
-
-# %%
-knn_param_grid_pca = {
-    "n_neighbors": [1, 3, 5, 7, 9, 10, 15, 20, 30],
-    "weights": ["uniform", "distance"],
-    "metric": ["euclidean", "manhattan", "cosine"]
-}
-
-grid_knn_pca = GridSearchCV(
-    estimator=KNeighborsClassifier(),
-    param_grid=knn_param_grid_pca,
-    cv=cv,
-    scoring="accuracy",
-    n_jobs=-1
-)
-
-grid_knn_pca.fit(X_train_pca, y_train)
-
-print("Best PCA CV accuracy:", grid_knn_pca.best_score_)
-print("Best PCA parameters:", grid_knn_pca.best_params_)
-
-
-# %%
-knn_results_pca_df = pd.DataFrame(grid_knn_pca.cv_results_)
-
-knn_results_pca_df = knn_results_pca_df[
-    [
-        "param_n_neighbors",
-        "param_weights",
-        "param_metric",
-        "mean_test_score",
-        "std_test_score",
-        "rank_test_score"
-    ]
-].sort_values("rank_test_score").reset_index(drop=True)
-
-knn_results_pca_df
-
-
-# %%
-best_knn_pca = grid_knn_pca.best_estimator_
-
-y_test_pred_knn_pca = best_knn_pca.predict(X_test_pca)
-
-test_acc_knn_pca = best_knn_pca.score(X_test_pca, y_test)
-
-print(f"Test accuracy: {test_acc_knn_pca:.4f}\n")
-print(classification_report(y_test, y_test_pred_knn_pca, digits=3))
-
-
-# %%
-cm_test_knn_pca = confusion_matrix(
-    y_test,
-    y_test_pred_knn_pca,
-    labels=["Winter", "Spring", "Summer", "Autumn"]
-)
-
-disp_knn_pca = ConfusionMatrixDisplay(
-    cm_test_knn_pca,
-    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
-)
-
-disp_knn_pca.plot(cmap="Blues")
-disp_knn_pca.ax_.set_xlabel("Prognozuota klasė")
-disp_knn_pca.ax_.set_ylabel("Tikroji klasė")
-plt.title("k-NN sumaišymo matrica - testinė aibė (PCA)")
-plt.tight_layout()
-plt.show()
-
-
-# %% [markdown]
-#  ## Roc originalioj
-
-# %%
-classes = ["Winter", "Spring", "Summer", "Autumn"]
-
-# tikimybės
-y_test_proba_knn = best_knn.predict_proba(X_test)
-
-# binarinės klasės
-y_test_bin = label_binarize(y_test, classes=classes)
-
-# macro AUC
-auc_macro_knn = roc_auc_score(
-    y_test_bin,
-    y_test_proba_knn,
-    average="macro",
-    multi_class="ovr"
-)
-
-print(f"Macro AUC: {auc_macro_knn:.4f}")
-
-
-# %%
-plt.figure(figsize=(6, 4))
-
-for i, cls in enumerate(classes):
-    fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_test_proba_knn[:, i])
-    roc_auc = auc(fpr, tpr)
-
-    plt.plot(
-        fpr,
-        tpr,
-        label=f"{cls} AUC = {roc_auc:.2f}"
-    )
-
-plt.plot([0, 1], [0, 1], "k--")
-
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.title("k-NN ROC kreivės")
-plt.legend()
-plt.tight_layout()
-plt.show()
-
-
-# %% [markdown]
-#  ## Klaidos originalioj Knn
-
-# %%
-errors_knn = X_test[y_test != y_test_pred_knn].copy()
-
-errors_knn["True"] = y_test[y_test != y_test_pred_knn]
-errors_knn["Predicted"] = y_test_pred_knn[y_test != y_test_pred_knn]
-
-errors_knn.head()
-
-
-# %%
-print(f"Klaidų skaičius: {len(errors_knn)}")
-
-
-# %%
-pd.crosstab(
-    errors_knn["True"],
-    errors_knn["Predicted"]
-)
-
-
-# %% [markdown]
-#  ## Klaidos PCA knn
-
-# %%
-plot_classification_pca(
-    X_test_pca,
-    y_test,
-    y_test_pred_knn_pca,
-    title="k-NN klasifikavimas PCA erdvėje"
-)
-
-
-
-# %% [markdown]
 # # Support vector classifier
 
 # %% [markdown]
@@ -1284,9 +1037,10 @@ plt.show()
 
 # %%
 knn_param_grid = {
-    "n_neighbors": [3, 5, 7, 9, 11, 15],
+    "n_neighbors": [1, 3, 5, 7, 9, 10, 15, 20, 30],
     "weights": ["uniform", "distance"],
-    "metric": ["euclidean", "manhattan"]
+    "metric": ["euclidean", "manhattan", "cosine"]
+
 }
 
 # %% [markdown]
@@ -1425,74 +1179,6 @@ y_test_pred_knn_cv = best_knn_cv.predict(X_test_knn_cv)
 print(f"Test accuracy CV: {best_knn_cv.score(X_test_knn_cv, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_knn_cv, digits=3))
 
-# %% [markdown]
-# ### Bootstrap
-
-# %%
-# # KODAS GALI TRUKTI ILGIAU
-# def knn_bootstrap(X, y, param_grid, n_iter=30, random_state=80085):
-#     rng = np.random.default_rng(random_state)
-#     results = []
-#
-#     for params in ParameterGrid(param_grid):
-#         scores = []
-#
-#         for i in range(n_iter):
-#             idx = rng.choice(len(X), size=len(X), replace=True)
-#             oob_idx = np.setdiff1d(np.arange(len(X)), idx)
-#
-#             if len(oob_idx) < 5:
-#                 continue
-#
-#             X_boot = X[idx]
-#             y_boot = y.iloc[idx] if hasattr(y, "iloc") else y[idx]
-#             X_oob = X[oob_idx]
-#             y_oob = y.iloc[oob_idx] if hasattr(y, "iloc") else y[oob_idx]
-#
-#             knn = KNeighborsClassifier(**params)
-#             knn.fit(X_boot, y_boot)
-#             scores.append(knn.score(X_oob, y_oob))
-#
-#         results.append({
-#             **params,
-#             "mean_acc": np.mean(scores),
-#             "std_acc": np.std(scores),
-#         })
-#
-#     return pd.DataFrame(results).sort_values(
-#         "mean_acc", ascending=False
-#     ).reset_index(drop=True)
-
-# %%
-# bootstrap_results_knn = knn_bootstrap(
-#     X_trainval_knn,
-#     y_trainval,
-#     knn_param_grid,
-#     n_iter=10
-# )
-#
-# bootstrap_results_knn
-
-# %%
-# best_boot_params_knn = bootstrap_results_knn.iloc[0][
-#     ["n_neighbors", "weights", "metric"]
-# ].to_dict()
-#
-# best_boot_params_knn["n_neighbors"] = int(best_boot_params_knn["n_neighbors"])
-#
-# best_knn_boot = KNeighborsClassifier(
-#     **best_boot_params_knn
-# ).fit(X_trainval_knn, y_trainval)
-#
-# test_acc_knn_boot = best_knn_boot.score(X_test_knn_cv, y_test)
-#
-# print(f"Test accuracy BOOTSTRAP: {test_acc_knn_boot:.4f}")
-
-# %%
-# y_test_pred_knn_boot = best_knn_boot.predict(X_test_knn_cv)
-#
-# print(f"Test accuracy BOOTSTRAP: {best_knn_boot.score(X_test_knn_cv, y_test):.4f}\n")
-# print(classification_report(y_test, y_test_pred_knn_boot, digits=3))
 
 # %% [markdown]
 # ### Modelių palyginimas
@@ -1503,9 +1189,6 @@ print(test_acc_knn_holdout)
 
 print("\n=== 5-FOLD CV ===")
 print(test_acc_knn_cv)
-
-print("\n=== BOOTSTRAP ===")
-# print(test_acc_knn_boot)
 
 # %% [markdown]
 # ### ROC kreivės
@@ -1590,7 +1273,6 @@ auc_all_knn = plot_roc_curves_combined(
     {
         "Holdout": best_knn_holdout,
         "CV": best_knn_cv,
-        # "Bootstrap": best_knn_boot,
     },
     X_test_knn,
     y_test,
@@ -1638,149 +1320,7 @@ plt.title("KNN sumaišymo matrica - kryžminė validacija")
 plt.tight_layout()
 plt.show()
 
-# %%
-# cm_test_knn_boot = confusion_matrix(
-#     y_test,
-#     y_test_pred_knn_boot,
-#     labels=["Winter", "Spring", "Summer", "Autumn"]
-# )
-#
-# disp_knn_boot = ConfusionMatrixDisplay(
-#     cm_test_knn_boot,
-#     display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
-# )
-#
-# disp_knn_boot.plot(cmap="Blues")
-# disp_knn_boot.ax_.set_xlabel("Prognozuota klasė")
-# disp_knn_boot.ax_.set_ylabel("Tikroji klasė")
-# plt.title("KNN sumaišymo matrica - bootstrap")
-# plt.tight_layout()
-# plt.show()
 
-# %% [markdown]
-# ### Klaidų analizė
-#
-# Toliau fiksuojamas CV modelis.
-
-# %%
-mistakes_knn = X_test.copy()
-mistakes_knn.insert(0, "True", np.array(y_test))
-mistakes_knn.insert(1, "Predicted", y_test_pred_knn_cv)
-
-mistakes_knn = mistakes_knn[
-    mistakes_knn["True"] != mistakes_knn["Predicted"]
-]
-
-mistakes_knn
-
-# %%
-def plot_misclassified_profiles(mistakes_df, final_dataset, time_cols, suptitle):
-    season_lt = {
-        "Winter": "Žiema",
-        "Spring": "Pavasaris",
-        "Summer": "Vasara",
-        "Autumn": "Ruduo"
-    }
-
-    season_means = {}
-
-    for season in ["Winter", "Spring", "Summer", "Autumn"]:
-        mask = final_dataset["season"] == season
-        season_means[season] = final_dataset.loc[
-            mask, time_cols
-        ].mean(axis=0).values
-
-    n_show = len(mistakes_df)
-
-    n_cols = int(np.ceil(np.sqrt(n_show)))
-    n_rows = int(np.ceil(n_show / n_cols))
-
-    fig, axes = plt.subplots(
-        n_rows,
-        n_cols,
-        figsize=(5 * n_cols, 5 * n_rows),
-        sharey=True
-    )
-
-    axes = np.array(axes).ravel() if n_show > 1 else [axes]
-
-    for ax, (idx, row) in zip(axes, mistakes_df.iterrows()):
-        true_lbl = row["True"]
-        pred_lbl = row["Predicted"]
-        profile = row[time_cols].values.astype(float)
-
-        ax.plot(
-            time_cols,
-            profile,
-            "k-",
-            linewidth=2.5,
-            label="Prognozuota diena"
-        )
-
-        ax.plot(
-            time_cols,
-            season_means[true_lbl],
-            "g--",
-            linewidth=1.8,
-            label=f"Vid. {season_lt[true_lbl]} (T)"
-        )
-
-        ax.plot(
-            time_cols,
-            season_means[pred_lbl],
-            "r:",
-            linewidth=1.8,
-            label=f"Vid. {season_lt[pred_lbl]} (P)"
-        )
-
-        ax.set_title(
-            f"Tikra: {season_lt[true_lbl]} → Prognozuota: {season_lt[pred_lbl]}",
-            fontsize=13
-        )
-
-        ax.legend(fontsize=11)
-        ax.grid(alpha=0.3)
-        ax.set_aspect("auto")
-        ax.set_box_aspect(1)
-
-        tick_step = 3
-        tick_positions = list(range(0, len(time_cols), tick_step))
-
-        ax.set_xticks(tick_positions)
-        ax.set_xticklabels(
-            [time_cols[i] for i in tick_positions],
-            rotation=45,
-            fontsize=11
-        )
-
-        ax.tick_params(axis="y", labelsize=11)
-        ax.set_xlabel("Valanda", fontsize=12)
-
-    for ax in axes[n_show:]:
-        ax.set_visible(False)
-
-    plt.suptitle(suptitle, fontsize=16)
-    plt.tight_layout()
-    plt.show()
-
-# %%
-time_cols = [c for c in mistakes_knn.columns if c not in ["True", "Predicted"]]
-
-plot_misclassified_profiles(
-    mistakes_knn,
-    final_dataset,
-    time_cols,
-    suptitle=""
-)
-
-# %%
-mistakes_summary_knn = pd.DataFrame({
-    "Data": final_dataset.loc[mistakes_knn.index, "Day"].values,
-    "Tikra": mistakes_knn["True"].values,
-    "Prognozuota": mistakes_knn["Predicted"].values,
-})
-
-mistakes_summary_knn
 
 # %% [markdown]
 # ## Dviejų dimensijų aibė
@@ -1862,78 +1402,9 @@ y_test_pred_knn_pca_cv = best_knn_cv_pca.predict(X_test_pca)
 print(f"Test accuracy CV PCA: {best_knn_cv_pca.score(X_test_pca, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_knn_pca_cv, digits=3))
 
-# %% [markdown]
-# ### Bootstrap
 
-# %%
-# bootstrap_results_knn_pca = knn_bootstrap(
-#     X_trainval_pca,
-#     y_trainval,
-#     knn_param_grid,
-#     n_iter=10
-# )
-#
-# bootstrap_results_knn_pca
 
-# %%
-# best_boot_params_knn_pca = bootstrap_results_knn_pca.iloc[0][
-#     ["n_neighbors", "weights", "metric"]
-# ].to_dict()
-#
-# best_boot_params_knn_pca["n_neighbors"] = int(
-#     best_boot_params_knn_pca["n_neighbors"]
-# )
-#
-# best_knn_boot_pca = KNeighborsClassifier(
-#     **best_boot_params_knn_pca
-# ).fit(X_trainval_pca, y_trainval)
-#
-# test_acc_knn_boot_pca = best_knn_boot_pca.score(X_test_pca, y_test)
-#
-# print(f"Test accuracy BOOTSTRAP PCA: {test_acc_knn_boot_pca:.4f}")
 
-# %%
-# y_test_pred_knn_pca_boot = best_knn_boot_pca.predict(X_test_pca)
-#
-# print(f"Test accuracy BOOTSTRAP PCA: {best_knn_boot_pca.score(X_test_pca, y_test):.4f}\n")
-# print(classification_report(y_test, y_test_pred_knn_pca_boot, digits=3))
-
-# %% [markdown]
-# ### ROC kreivės PCA aibei
-
-# %%
-auc_all_knn_pca = plot_roc_curves_combined(
-    {
-        "Holdout": best_knn_holdout_pca,
-        "CV": best_knn_cv_pca,
-        # "Bootstrap": best_knn_boot_pca,
-    },
-    X_test_pca,
-    y_test,
-    suptitle=""
-)
-
-# %% [markdown]
-# ### Sumaišymo matricos PCA aibei
-
-# %%
-cm_test_knn_pca_holdout = confusion_matrix(
-    y_test,
-    y_test_pred_knn_pca_holdout,
-    labels=["Winter", "Spring", "Summer", "Autumn"]
-)
-
-disp_knn_pca_holdout = ConfusionMatrixDisplay(
-    cm_test_knn_pca_holdout,
-    display_labels=["Žiema", "Pavasaris", "Vasara", "Ruduo"]
-)
-
-disp_knn_pca_holdout.plot(cmap="Blues")
-disp_knn_pca_holdout.ax_.set_xlabel("Prognozuota klasė")
-disp_knn_pca_holdout.ax_.set_ylabel("Tikroji klasė")
-plt.title("KNN sumaišymo matrica - holdout PCA")
-plt.tight_layout()
-plt.show()
 
 # %%
 cm_test_knn_pca_cv = confusion_matrix(
@@ -2037,52 +1508,15 @@ plot_classification_pca(
     title="KNN klasifikavimas PCA erdvėje - kryžminė validacija"
 )
 
-# %%
-# plot_classification_pca(
-#     X_test_pca,
-#     y_test,
-#     y_test_pred_knn_pca_boot,
-#     title="KNN klasifikavimas PCA erdvėje - bootstrap"
-# )
-
 # %% [markdown]
-# ### Klaidų analizė PCA aibei
-#
-# Toliau fiksuojamas holdout PCA modelis.
+# ### Klaidų analizė 
 
 # %%
-X_test_pca_df = pd.DataFrame(
+# Originalios aibės KNN CV modelio klaidos atvaizduotos PCA erdvėje
+plot_classification_pca(
     X_test_pca,
-    columns=["PC1", "PC2"],
-    index=X_test.index
+    y_test,
+    y_test_pred_knn_cv,
+    pav="klaidu_anal_knn_cv_orig.png",
+    title="KNN CV modelio klaidos PCA erdvėje"
 )
-
-mistakes_knn_pca = X_test_pca_df.join(X_test)
-
-mistakes_knn_pca.insert(0, "True", np.array(y_test))
-mistakes_knn_pca.insert(1, "Predicted", y_test_pred_knn_pca_holdout)
-
-mistakes_knn_pca = mistakes_knn_pca[
-    mistakes_knn_pca["True"] != mistakes_knn_pca["Predicted"]
-]
-
-mistakes_knn_pca.drop(columns=["PC1", "PC2"], inplace=True)
-
-mistakes_knn_pca
-
-# %%
-plot_misclassified_profiles(
-    mistakes_knn_pca,
-    final_dataset,
-    time_cols,
-    suptitle=""
-)
-
-# %%
-mistakes_summary_knn_pca = pd.DataFrame({
-    "Data": final_dataset.loc[mistakes_knn_pca.index, "Day"].values,
-    "Tikra": mistakes_knn_pca["True"].values,
-    "Prognozuota": mistakes_knn_pca["Predicted"].values,
-})
-
-mistakes_summary_knn_pca
