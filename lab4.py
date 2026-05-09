@@ -156,6 +156,14 @@ plt.tight_layout()
 plt.show()
 
 
+# %%
+#Skaitines charakteristikos pagal sezona
+print(final_dataset_melted[["power","season"]].groupby("season").describe())
+
+
+# %%
+
+
 # %% [markdown]
 # # Duomenų padalinimas
 
@@ -268,6 +276,81 @@ plt.tight_layout()
 plt.show()
 
 # %% [markdown]
+# ### Klaidu tyrimas
+
+# %%
+#Neteisingai suklasifikuoti tašku tyrimas
+mistakes_rf = X_test.copy()
+mistakes_rf.insert(0, "True", np.array(y_test))
+mistakes_rf.insert(1, "Predicted", y_test_pred_rf)
+mistakes_rf = mistakes_rf[mistakes_rf["True"] != mistakes_rf["Predicted"]]
+mistakes_rf
+
+# %%
+def plot_misclassified_profiles(mistakes_df, final_dataset, time_cols, suptitle):
+    season_lt = {"Winter": "Žiema", "Spring": "Pavasaris", 
+                 "Summer": "Vasara", "Autumn": "Ruduo"}
+    
+    # Sezonų vidurkiai iš VISO dataset'o
+    season_means = {}
+    for season in ["Winter", "Spring", "Summer", "Autumn"]:
+        mask = final_dataset["season"] == season
+        season_means[season] = final_dataset.loc[mask, time_cols].mean(axis=0).values
+    
+    n_show = len(mistakes_df)
+    n_cols = 4
+    n_rows = int(np.ceil(n_show / n_cols))
+    
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 5*n_rows), sharey=True)
+    axes = axes.ravel() if n_rows > 1 else [axes] if n_cols == 1 else axes
+    
+    for ax, (idx, row) in zip(axes, mistakes_df.iterrows()):
+        true_lbl = row["True"]
+        pred_lbl = row["Predicted"]
+        profile = row[time_cols].values.astype(float)
+        
+        ax.plot(time_cols, profile, "k-", linewidth=2.5, label="Prognozuota diena")
+        ax.plot(time_cols, season_means[true_lbl], "g--", linewidth=1.8,
+                label=f"Vid. {season_lt[true_lbl]} (T)")
+        ax.plot(time_cols, season_means[pred_lbl], "r:", linewidth=1.8,
+                label=f"Vid. {season_lt[pred_lbl]} (P)")
+        
+        ax.set_title(f"Tikra: {season_lt[true_lbl]} → Prognozuota: {season_lt[pred_lbl]}", fontsize=13)
+        ax.legend(fontsize=11)
+        ax.grid(alpha=0.3)
+        ax.set_aspect("auto")
+        ax.set_box_aspect(1)
+        
+        tick_step = 3
+        tick_positions = list(range(0, len(time_cols), tick_step))
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels([time_cols[i] for i in tick_positions], rotation=45, fontsize=11)
+        ax.tick_params(axis='y', labelsize=11)
+        ax.set_xlabel("Valanda", fontsize=12)
+    
+    for ax in axes[n_show:]:
+        ax.set_visible(False)
+    
+    plt.suptitle(suptitle, fontsize=16)
+    plt.tight_layout()
+    plt.show()
+
+# %%
+time_cols = [c for c in mistakes_rf.columns if c not in ["True", "Predicted"]]
+plot_misclassified_profiles(
+    mistakes_rf, final_dataset, time_cols,
+    suptitle=""
+)
+
+# %%
+mistakes_summary_rf = pd.DataFrame({
+    "Data": final_dataset.loc[mistakes_rf.index, "Day"].values,
+    "Tikra": mistakes_rf["True"].values,
+    "Prognozuota": mistakes_rf["Predicted"].values,
+})
+mistakes_summary_rf
+
+# %% [markdown]
 # ## Dviejų dimensijų aibė
 
 # %%
@@ -364,6 +447,33 @@ plot_classification_pca(X_test_pca, y_test, y_test_pred_rf,
 
 # %% [markdown]
 # #Todo: labiau pasižiūėti kuo klaidos išsiskiria (tiketina, kad bus tie taskai, kurie yra perainamajame laikotarpyje ruduo -> ziema, ziema -> pavasaris, pavasaris -> vasara, vasara -> ruduo)
+
+# %% [markdown]
+# ### Klaidu analize
+
+# %%
+#Neteisingai suklasifikuoti tašku tyrimas
+X_test_pca_df = pd.DataFrame(X_test_pca, columns=["PC1", "PC2"], index=X_test.index)
+mistakes_rf_pca = X_test_pca_df.join(X_test)
+mistakes_rf_pca.insert(0, "True", np.array(y_test))
+mistakes_rf_pca.insert(1, "Predicted", y_test_pred_rf_pca)
+mistakes_rf_pca = mistakes_rf_pca[mistakes_rf_pca["True"] != mistakes_rf_pca["Predicted"]]
+mistakes_rf_pca.drop(columns=["PC1", "PC2"], inplace=True)
+mistakes_rf_pca
+
+# %%
+plot_misclassified_profiles(
+    mistakes_rf_pca, final_dataset, time_cols,
+    suptitle=""
+)
+
+# %%
+mistakes_summary_rf_pca = pd.DataFrame({
+    "Data": final_dataset.loc[mistakes_rf_pca.index, "Day"].values,
+    "Tikra": mistakes_rf_pca["True"].values,
+    "Prognozuota": mistakes_rf_pca["Predicted"].values,
+})
+mistakes_summary_rf_pca
 
 # %% [markdown]
 # 
