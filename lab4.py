@@ -943,6 +943,83 @@ print(classification_report(y_test, y_test_pred_rf_pca_cv, digits=3))
 #    ## ROC kreives
 
 # %%
+def plot_roc_curves_combined(models_dict, X_test, y_test, suptitle="ROC kreivių palyginimas"):
+    season_lt = {
+        "Winter": "Žiema",
+        "Spring": "Pavasaris",
+        "Summer": "Vasara",
+        "Autumn": "Ruduo"
+    }
+
+    season_colors = {
+        "Winter": "#4C78A8",
+        "Spring": "#59A14F",
+        "Summer": "#F28E2B",
+        "Autumn": "#9C755F"
+    }
+
+    classes = ["Winter", "Spring", "Summer", "Autumn"]
+
+    y_test_bin = label_binarize(y_test, classes=classes)
+
+    n_models = len(models_dict)
+    fig, axes = plt.subplots(1, n_models, figsize=(9 * n_models, 9))
+
+    if n_models == 1:
+        axes = [axes]
+
+    auc_scores_all = {}
+
+    for ax, (name, model) in zip(axes, models_dict.items()):
+        model_classes = list(model.classes_)
+        class_order_idx = [model_classes.index(c) for c in classes]
+
+        y_score = model.predict_proba(X_test)[:, class_order_idx]
+
+        auc_scores = {}
+
+        for i, season in enumerate(classes):
+            fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+            roc_auc = auc(fpr, tpr)
+            auc_scores[season] = roc_auc
+
+            ax.plot(
+                fpr, tpr,
+                color=season_colors[season],
+                linewidth=3,
+                label=f"{season_lt[season]} (AUC = {roc_auc:.3f})"
+            )
+
+        auc_scores_all[name] = auc_scores
+        macro_auc = np.mean(list(auc_scores.values()))
+
+        ax.plot(
+            [0, 1], [0, 1],
+            "k--",
+            linewidth=1.5,
+            alpha=0.5,
+            label="Atsitiktinis"
+        )
+
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([0.0, 1.05])
+        ax.set_xlabel("FPR", fontsize=16)
+        ax.set_ylabel("TPR", fontsize=16)
+        ax.set_title(f"{name}\nMacro AUC = {macro_auc:.3f}", fontsize=18)
+        ax.legend(loc="lower right", fontsize=16)
+        ax.grid(alpha=0.3)
+        ax.tick_params(axis="both", labelsize=16)
+        ax.set_aspect("equal")
+
+    plt.suptitle(suptitle, fontsize=20)
+    plt.tight_layout()
+    plt.show()
+
+    return auc_scores_all
+
+
+
+# %%
 auc_all = plot_roc_curves_combined(
     {
         "Holdout": best_rf_holdout_pca,
@@ -1925,83 +2002,6 @@ print(test_acc_knn_cv)
 
 # %% [markdown]
 #   ### ROC kreivės
-
-# %%
-def plot_roc_curves_combined(models_dict, X_test, y_test, suptitle="ROC kreivių palyginimas"):
-    season_lt = {
-        "Winter": "Žiema",
-        "Spring": "Pavasaris",
-        "Summer": "Vasara",
-        "Autumn": "Ruduo"
-    }
-
-    season_colors = {
-        "Winter": "#4C78A8",
-        "Spring": "#59A14F",
-        "Summer": "#F28E2B",
-        "Autumn": "#9C755F"
-    }
-
-    classes = ["Winter", "Spring", "Summer", "Autumn"]
-
-    y_test_bin = label_binarize(y_test, classes=classes)
-
-    n_models = len(models_dict)
-    fig, axes = plt.subplots(1, n_models, figsize=(9 * n_models, 9))
-
-    if n_models == 1:
-        axes = [axes]
-
-    auc_scores_all = {}
-
-    for ax, (name, model) in zip(axes, models_dict.items()):
-        model_classes = list(model.classes_)
-        class_order_idx = [model_classes.index(c) for c in classes]
-
-        y_score = model.predict_proba(X_test)[:, class_order_idx]
-
-        auc_scores = {}
-
-        for i, season in enumerate(classes):
-            fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
-            roc_auc = auc(fpr, tpr)
-            auc_scores[season] = roc_auc
-
-            ax.plot(
-                fpr, tpr,
-                color=season_colors[season],
-                linewidth=3,
-                label=f"{season_lt[season]} (AUC = {roc_auc:.3f})"
-            )
-
-        auc_scores_all[name] = auc_scores
-        macro_auc = np.mean(list(auc_scores.values()))
-
-        ax.plot(
-            [0, 1], [0, 1],
-            "k--",
-            linewidth=1.5,
-            alpha=0.5,
-            label="Atsitiktinis"
-        )
-
-        ax.set_xlim([0.0, 1.0])
-        ax.set_ylim([0.0, 1.05])
-        ax.set_xlabel("FPR", fontsize=16)
-        ax.set_ylabel("TPR", fontsize=16)
-        ax.set_title(f"{name}\nMacro AUC = {macro_auc:.3f}", fontsize=18)
-        ax.legend(loc="lower right", fontsize=16)
-        ax.grid(alpha=0.3)
-        ax.tick_params(axis="both", labelsize=16)
-        ax.set_aspect("equal")
-
-    plt.suptitle(suptitle, fontsize=20)
-    plt.tight_layout()
-    plt.show()
-
-    return auc_scores_all
-
-
 
 # %%
 auc_knn_holdout = plot_roc_curves_combined(
