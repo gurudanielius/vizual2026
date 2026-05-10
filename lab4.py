@@ -1248,7 +1248,7 @@ svc_holdout_results
 
 # %%
 param_grid = {	
-    "svm__C": np.linspace(0.85, 1.15, 5),
+    "svm__C": np.linspace(75, 105, 5),
     "svm__kernel": ["rbf"],
     "svm__gamma": np.linspace(0.05,0.15,5)
 }
