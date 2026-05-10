@@ -22,16 +22,20 @@ from sklearn.preprocessing import label_binarize
 
 
 
+
 # %%
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+
 
 
 # %%
 final_dataset=pd.read_csv("final_dataset.csv")
 
 
+
 # %%
 final_dataset.head()
+
 
 
 
@@ -41,8 +45,10 @@ label_counts # klases subalansuotos
 
 
 
+
 # %%
 # final_dataset.drop(columns=["month"], inplace=True)
+
 
 
 
@@ -51,8 +57,10 @@ sums=final_dataset.copy()
 sums=sums.select_dtypes(include="number").mean(axis=1).to_frame(name="mean")
 
 
+
 # %%
 sums
+
 
 
 # %%
@@ -60,8 +68,10 @@ sums["Day"]=final_dataset["Day"]
 sums["season"]=final_dataset["season"]
 
 
+
 # %%
 sums
+
 
 
 # %%
@@ -108,13 +118,16 @@ plt.show()
 
 
 
+
 # %%
 plot_means=sums.groupby("season")["mean"].mean().to_frame(name="mean")
 plot_means[ "std" ] = sums.groupby("season")["mean"].std().to_frame(name="std")
 
 
+
 # %%
 plot_means
+
 
 
 # %%
@@ -138,6 +151,7 @@ plt.xlabel("Sezonas")
 plt.ylabel("Vidutinė galia")
 plt.tight_layout()
 plt.show()
+
 
 
 
@@ -180,18 +194,21 @@ plt.show()
 
 
 
+
 # %%
 #Skaitines charakteristikos pagal sezona
 print(final_dataset_melted[["power","season"]].groupby("season").describe())
 
 
 
+
 # %% [markdown]
-#   # Duomenų padalinimas
+#    # Duomenų padalinimas
 
 # %%
 X = final_dataset.drop(columns=["season", "Day", "month"])
 y = final_dataset["season"]
+
 
 
 # %%
@@ -200,11 +217,13 @@ X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.2, stratif
 X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=80085)
 
 
+
 # %%
 len(X_train), len(X_val), len(X_test)
 
+
 # %% [markdown]
-#   # Dimensijos mažinimas
+#    # Dimensijos mažinimas
 
 # %%
 def normalized_stress(X, X_emb):
@@ -225,15 +244,21 @@ def emb_metrics(X_orig, X_emb, n_neighbors=10):
     print(f"Stress:          {stress:.4f}")
 
 
+
 # %% [markdown]
-#   ### PCA
+#    ### PCA
 # 
 # 
 # 
-#   Praeitame laboratoriniame darbe naudotas tas pats duomenų rinkinys ir ten gauta, kad geriausias dimensijos mažinimo algoritmas yra PCA. Šiame laboratorinyje taip pat naudosime PCA.
+# 
+# 
+# 
+# 
+#    Praeitame laboratoriniame darbe naudotas tas pats duomenų rinkinys ir ten gauta, kad geriausias dimensijos mažinimo algoritmas yra PCA. Šiame laboratorinyje taip pat naudosime PCA.
 
 # %%
 pca_model = PCA(n_components=2, random_state=80085)
+
 
 
 # %%
@@ -248,34 +273,55 @@ X_val_pca   = pca_model.transform(X_scaled_val)
 X_test_pca  = pca_model.transform(X_scaled_test)
 
 
-# %% [markdown]
-#   # Atsitiktinių miškų klasifikatorius
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-#   **Pagrindiniai hiperparametrai:**
-# 
-# 
-# 
-#   1. n_estimators
-# 
-# 
-# 
-#   2. max_depth
-# 
-# 
-# 
-#   5. max_features
 
 # %% [markdown]
-#   ## Originali duomenų aibė
+#    # Atsitiktinių miškų klasifikatorius
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+#    **Pagrindiniai hiperparametrai:**
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+#    1. n_estimators
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+#    2. max_depth
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+#    5. max_features
 
 # %% [markdown]
-#  ### Holdout
+#    ## Originali duomenų aibė
+
+# %% [markdown]
+#   ### Holdout
 
 # %%
 rf_param_grid = {
@@ -298,8 +344,10 @@ def rf_holdout(X_train, y_train, X_val, y_val, param_grid, random_state=80085):
 holdout_results = rf_holdout(X_train, y_train, X_val, y_val, rf_param_grid)
 
 
+
 # %%
 holdout_results
+
 
 # %%
 best_holdout_params = holdout_results.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
@@ -315,6 +363,7 @@ test_acc_rf_holdout = best_rf_holdout.score(X_test, y_test)
 print(f"Test accuracy HOLDOUT: {test_acc_rf_holdout:.4f}")
 
 
+
 # %%
 y_test_pred_rf_holdout = best_rf_holdout.predict(X_test)
 
@@ -322,9 +371,9 @@ print(f"Test accuracy HOLDOUT: {best_rf_holdout.score(X_test, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_rf_holdout, digits=3))
 
 
-# %% [markdown]
-#  ### Kryzmine validacija
 
+# %% [markdown]
+#   ### Kryzmine validacija
 
 # %%
 def rf_cv(X, y, param_grid, cv=5, random_state=80085):
@@ -348,6 +397,7 @@ cv_results = rf_cv(X_trainval, y_trainval, rf_param_grid, cv=5)
 cv_results
 
 
+
 # %%
 best_cv_params = cv_results.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
 print(best_cv_params)
@@ -363,6 +413,7 @@ test_acc_rf_cv = best_rf_cv.score(X_test, y_test)
 print(f"Test accuracy CV: {test_acc_rf_cv:.4f}")
 
 
+
 # %%
 y_test_pred_rf_CV = best_rf_cv.predict(X_test)
 
@@ -370,8 +421,9 @@ print(f"Test accuracy CV: {best_rf_cv.score(X_test, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_rf_CV, digits=3))
 
 
+
 # %% [markdown]
-#  ### Bootstrap
+#   ### Bootstrap
 
 # %%
 #KODAS TRUNKA 4 MINUTES RUN AT YOU OWN RISK
@@ -408,8 +460,10 @@ bootstrap_results = rf_bootstrap(X_trainval, y_trainval, rf_param_grid, n_iter=1
 
 
 
+
 # %%
 bootstrap_results
+
 
 
 # %%
@@ -426,11 +480,13 @@ test_acc_rf_boot = best_rf_boot.score(X_test, y_test)
 print(f"Test accuracy BOOTSTRAP: {test_acc_rf_boot:.4f}")
 
 
+
 # %%
 y_test_pred_rf_boot = best_rf_boot.predict(X_test)
 
 print(f"Test accuracy BOOTSTRAP: {best_rf_boot.score(X_test, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_rf_boot, digits=3))
+
 
 
 # %%
@@ -443,8 +499,9 @@ print("\n=== BOOTSTRAP ===")
 print(test_acc_rf_boot) #=> geriausias modelis holdout ir cv
 
 
+
 # %% [markdown]
-#  ### ROC
+#   ### ROC
 
 # %%
 def plot_roc_curve_single(model, X_test, y_test, title="ROC kreivės", pav="roc_curve.png"):
@@ -489,19 +546,25 @@ def plot_roc_curve_single(model, X_test, y_test, title="ROC kreivės", pav="roc_
 
     return auc_scores
 
+
 # %%
 auc_scores = plot_roc_curve_single(best_rf_holdout, X_test, y_test, pav="roc_curve_holdout.png",title="")
+
 
 # %%
 auc_scores = plot_roc_curve_single(best_rf_cv, X_test, y_test, pav="roc_curve_cv_rf.png",title="")
 
+
 # %%
 
 
+
 # %% [markdown]
-#  #TODO: pasitarti kuri strategija geriausia
+#   #TODO: pasitarti kuri strategija geriausia
 # 
-#  Pagal ROC kreives geriausias yra bootstrap modelis - didziausias macro AUC
+# 
+# 
+#   Pagal ROC kreives geriausias yra bootstrap modelis - didziausias macro AUC
 
 # %%
 cm_test_rf_holdout = confusion_matrix(y_test, y_test_pred_rf_holdout, labels=["Winter", "Spring", "Summer", "Autumn"])
@@ -524,6 +587,7 @@ plt.tight_layout()
 plt.savefig("confusion_matrix_holdout_rf.png", dpi=300)
 plt.show()
 
+
 # %%
 cm_test_rf_CV = confusion_matrix(y_test, y_test_pred_rf_CV, labels=["Winter", "Spring", "Summer", "Autumn"])
 disp_rf_CV = ConfusionMatrixDisplay(
@@ -545,6 +609,7 @@ plt.tight_layout()
 plt.savefig("confusion_matrix_cv_rf.png", dpi=300)
 plt.show()
 
+
 # %%
 cm_test_rf_boot = confusion_matrix(y_test, y_test_pred_rf_boot, labels=["Winter", "Spring", "Summer", "Autumn"])
 disp_rf_boot = ConfusionMatrixDisplay(
@@ -559,8 +624,9 @@ plt.tight_layout()
 plt.show()
 
 
+
 # %% [markdown]
-# o dabar jau kryzmine validacija
+#  o dabar jau kryzmine validacija
 
 # %%
 #Neteisingai suklasifikuoti tašku tyrimas
@@ -569,6 +635,7 @@ mistakes_rf.insert(0, "True", np.array(y_test))
 mistakes_rf.insert(1, "Predicted", y_test_pred_rf_CV)
 mistakes_rf = mistakes_rf[mistakes_rf["True"] != mistakes_rf["Predicted"]]
 mistakes_rf
+
 
 
 # %%
@@ -624,12 +691,14 @@ def plot_misclassified_profiles(mistakes_df, final_dataset, time_cols, suptitle,
     plt.show()
 
 
+
 # %%
 time_cols = [c for c in mistakes_rf.columns if c not in ["True", "Predicted"]]
 plot_misclassified_profiles(
     mistakes_rf, final_dataset, time_cols,
     suptitle="", pav="klaidu analize_rf_cv_vidurkiu.png"
 )
+
 
 
 # %%
@@ -641,22 +710,25 @@ mistakes_summary_rf = pd.DataFrame({
 mistakes_summary_rf
 
 
-# %% [markdown]
-#  ## Dviejų dimensijų aibė
 
 # %% [markdown]
-#  ### Holdout
+#   ## Dviejų dimensijų aibė
+
+# %% [markdown]
+#   ### Holdout
 
 # %%
 holdout_results_pca = rf_holdout(X_train_pca, y_train, X_val_pca, y_val, rf_param_grid)
+
 
 
 # %%
 holdout_results_pca
 
 
+
 # %% [markdown]
-#   Prasti popieriai, PCA duomenų aibė labai pablogina rezultatus - validacijos aibė realiai spėlioja duomenis, o klasifikacvimo tikslumas (ten kur validacija geriausia) sieki tik 0,767...
+#    Prasti popieriai, PCA duomenų aibė labai pablogina rezultatus - validacijos aibė realiai spėlioja duomenis, o klasifikacvimo tikslumas (ten kur validacija geriausia) sieki tik 0,767...
 
 # %%
 best_holdout_params_pca = holdout_results_pca.iloc[0][["n_estimators", "max_depth", "max_features"]].to_dict()
@@ -672,6 +744,7 @@ test_acc_rf_holdout = best_rf_holdout_pca.score(X_test_pca, y_test)
 print(f"Test accuracy HOLDOUT PCA: {test_acc_rf_holdout:.4f}")
 
 
+
 # %%
 y_test_pred_rf_pca_holdout = best_rf_holdout_pca.predict(X_test_pca)
 test_acc_rf_pca = best_rf_holdout_pca.score(X_test_pca, y_test)
@@ -680,9 +753,9 @@ print(f"Test accuracy HOLDOUT PCA: {test_acc_rf_pca :.4f}\n")
 print(classification_report(y_test, y_test_pred_rf_pca_holdout, digits=3))
 
 
-# %% [markdown]
-#  ### Kryzmine validavija
 
+# %% [markdown]
+#   ### Kryzmine validavija
 
 # %%
 X_trainval_pca = np.concatenate([X_train_pca, X_val_pca])
@@ -690,8 +763,10 @@ y_trainval = pd.concat([y_train, y_val])
 cv_results_pca = rf_cv(X_trainval_pca, y_trainval, rf_param_grid, cv=5)
 
 
+
 # %%
 cv_results_pca
+
 
 
 # %%
@@ -708,6 +783,7 @@ test_acc_rf_cv = best_rf_cv_pca.score(X_test_pca, y_test)
 print(f"Test accuracy CV PCA: {test_acc_rf_cv:.4f}")
 
 
+
 # %%
 y_test_pred_rf_pca_cv = best_rf_cv_pca.predict(X_test_pca)
 test_acc_rf_pca = best_rf_cv_pca.score(X_test_pca, y_test)
@@ -716,15 +792,18 @@ print(f"Test accuracy CV PCA: {test_acc_rf_pca :.4f}\n")
 print(classification_report(y_test, y_test_pred_rf_pca_cv, digits=3))
 
 
+
 # %% [markdown]
-#  ### Bootstraping
+#   ### Bootstraping
 
 # %%
 boot_results_pca = rf_bootstrap(X_trainval_pca, y_trainval, rf_param_grid, n_iter=10)
 
 
+
 # %%
 boot_results_pca
+
 
 
 # %%
@@ -741,6 +820,7 @@ test_acc_rf_boot_pca = best_rf_boot_pca.score(X_test_pca, y_test)
 print(f"Test accuracy BOOTSTRAP PCA: {test_acc_rf_boot_pca:.4f}")
 
 
+
 # %%
 y_test_pred_rf_pca_boot = best_rf_boot_pca.predict(X_test_pca)
 test_acc_rf_pca = best_rf_boot_pca.score(X_test_pca, y_test)
@@ -749,8 +829,9 @@ print(f"Test accuracy BOOTSTRAP PCA: {test_acc_rf_pca :.4f}\n")
 print(classification_report(y_test, y_test_pred_rf_pca_boot, digits=3))
 
 
+
 # %% [markdown]
-#  ## ROC kreives
+#   ## ROC kreives
 
 # %%
 auc_all = plot_roc_curves_combined(
@@ -764,8 +845,9 @@ auc_all = plot_roc_curves_combined(
 )
 
 
+
 # %% [markdown]
-#  Pagal ROC kreive PCA geriausias yra holdout'as
+#   Pagal ROC kreive PCA geriausias yra holdout'as
 
 # %%
 #holdout
@@ -780,6 +862,7 @@ disp_rf_pca_holdout.ax_.set_ylabel("Tikroji klasė")
 plt.title("Atsitiktinių miškų sumaišymo matrica - holdout PCA")
 plt.tight_layout()
 plt.show()
+
 
 
 # %%
@@ -797,6 +880,7 @@ plt.tight_layout()
 plt.show()
 
 
+
 # %%
 #bootstrap
 cm_test_rf_pca_bootstrap = confusion_matrix(y_test, y_test_pred_rf_pca_boot, labels=["Winter", "Spring", "Summer", "Autumn"])
@@ -810,6 +894,7 @@ disp_rf_pca_bootstrap.ax_.set_ylabel("Tikroji klasė")
 plt.title("Atsitiktinių miškų sumaišymo matrica - bootstrap PCA")
 plt.tight_layout()
 plt.show()
+
 
 
 # %%
@@ -864,12 +949,14 @@ def plot_classification_pca(X_test_pca, y_test, y_pred, title, pav="classificati
     plt.savefig(pav, dpi=300)
     plt.show()
 
-# %% [markdown]
-#  #Todo: labiau pasižiūėti kuo klaidos išsiskiria (tiketina, kad bus tie taskai, kurie yra perainamajame laikotarpyje ruduo -> ziema, ziema -> pavasaris, pavasaris -> vasara, vasara -> ruduo)
 
 # %% [markdown]
-#  ### Klaidu analize
-#  cia dar originalios bus klaidos analizuojamos tik nubreztos pca edveje trumpam, po to pca klaidu analize kurios i aprasasa nedesime
+#   #Todo: labiau pasižiūėti kuo klaidos išsiskiria (tiketina, kad bus tie taskai, kurie yra perainamajame laikotarpyje ruduo -> ziema, ziema -> pavasaris, pavasaris -> vasara, vasara -> ruduo)
+
+# %% [markdown]
+#   ### Klaidu analize
+# 
+#   cia dar originalios bus klaidos analizuojamos tik nubreztos pca edveje trumpam, po to pca klaidu analize kurios i aprasasa nedesime
 
 # %%
 plot_classification_pca(
@@ -880,9 +967,11 @@ plot_classification_pca(
     title=""
 )
 
+
 # %%
 #holdout PCA
 plot_classification_pca(X_test_pca, y_test, y_test_pred_rf_pca_holdout, pav="klaidu_anal_rf.png", title="")
+
 
 
 # %%
@@ -896,11 +985,13 @@ mistakes_rf_pca.drop(columns=["PC1", "PC2"], inplace=True)
 mistakes_rf_pca
 
 
+
 # %%
 plot_misclassified_profiles(
     mistakes_rf_pca, final_dataset, time_cols,
     suptitle=""
 )
+
 
 
 # %%
@@ -912,11 +1003,12 @@ mistakes_summary_rf_pca = pd.DataFrame({
 mistakes_summary_rf_pca
 
 
-# %% [markdown]
-# # Support vector classifier
 
 # %% [markdown]
-# ## Tinklelio paieška
+#  # Support vector classifier
+
+# %% [markdown]
+#  ## Tinklelio paieška
 
 # %%
 
@@ -943,8 +1035,10 @@ grid.fit(X_train, y_train)
 print(grid.best_params_)
 print(grid.best_score_)
 
+
 # %%
 display(pd.DataFrame(grid.cv_results_).sort_values("mean_test_score", ascending=False))
+
 
 
 # %%
@@ -966,13 +1060,16 @@ grid.fit(X_train, y_train)
 print(grid.best_params_)
 print(grid.best_score_)
 
+
 # %%
 display(pd.DataFrame(grid.cv_results_).sort_values("mean_test_score", ascending=False))
+
 
 # %%
 svm_final = grid.best_estimator_
 test_score = svm_final.score(X_temp, y_temp)
 print(f"SVM test accuracy: {test_score:.4f}")
+
 
 # %%
 y_pred = svm_final.predict(X_temp)
@@ -990,11 +1087,13 @@ plt.title("SVM sumaišymo matrica - testinė aibė")
 plt.tight_layout()
 plt.show()
 
+
 # %%
 print("Balanced accuracy:", balanced_accuracy_score(y_temp, y_pred))
 print("Macro precision:", precision_score(y_temp, y_pred, average="macro"))
 print("Macro recall:", recall_score(y_temp, y_pred, average="macro"))
 print("Macro F1:", f1_score(y_temp, y_pred, average="macro"))
+
 
 # %%
 y_score = svm_final.decision_function(X_temp)
@@ -1026,28 +1125,35 @@ plt.grid(True)
 plt.show()
 
 
+
 # %% [markdown]
-# # KNN klasifikatorius
-#
-# **Pagrindiniai hiperparametrai:**
-#
-# 1. n_neighbors
-# 2. weights
-# 3. metric
+#  # KNN klasifikatorius
+# 
+# 
+# 
+#  **Pagrindiniai hiperparametrai:**
+# 
+# 
+# 
+#  1. n_neighbors
+# 
+#  2. weights
+# 
+#  3. metric
 
 # %%
 knn_param_grid = {
     "n_neighbors": [1, 3, 5, 7, 9, 10, 15, 20, 30],
     "weights": ["uniform", "distance"],
     "metric": ["euclidean", "manhattan", "cosine"]
-
 }
 
-# %% [markdown]
-# ## Originali duomenų aibė
 
 # %% [markdown]
-# ### Duomenų standartizavimas KNN modeliui
+#  ## Originali duomenų aibė
+
+# %% [markdown]
+#  ### Duomenų standartizavimas KNN modeliui
 
 # %%
 scaler_knn = RobustScaler()
@@ -1056,8 +1162,9 @@ X_train_knn = scaler_knn.fit_transform(X_train)
 X_val_knn   = scaler_knn.transform(X_val)
 X_test_knn  = scaler_knn.transform(X_test)
 
+
 # %% [markdown]
-# ### Holdout
+#  ### Holdout
 
 # %%
 def knn_holdout(X_train, y_train, X_val, y_val, param_grid):
@@ -1077,6 +1184,7 @@ def knn_holdout(X_train, y_train, X_val, y_val, param_grid):
         "val_acc", ascending=False
     ).reset_index(drop=True)
 
+
 # %%
 holdout_results_knn = knn_holdout(
     X_train_knn, y_train,
@@ -1085,6 +1193,7 @@ holdout_results_knn = knn_holdout(
 )
 
 holdout_results_knn
+
 
 # %%
 best_holdout_params_knn = holdout_results_knn.iloc[0][
@@ -1101,14 +1210,16 @@ test_acc_knn_holdout = best_knn_holdout.score(X_test_knn, y_test)
 
 print(f"Test accuracy HOLDOUT: {test_acc_knn_holdout:.4f}")
 
+
 # %%
 y_test_pred_knn_holdout = best_knn_holdout.predict(X_test_knn)
 
 print(f"Test accuracy HOLDOUT: {best_knn_holdout.score(X_test_knn, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_knn_holdout, digits=3))
 
+
 # %% [markdown]
-# ### Kryžminė validacija
+#  ### Kryžminė validacija
 
 # %%
 def knn_cv(X, y, param_grid, cv=5, random_state=80085):
@@ -1140,6 +1251,7 @@ def knn_cv(X, y, param_grid, cv=5, random_state=80085):
         "mean_acc", ascending=False
     ).reset_index(drop=True)
 
+
 # %%
 X_trainval = pd.concat([X_train, X_val])
 y_trainval = pd.concat([y_train, y_val])
@@ -1147,6 +1259,7 @@ y_trainval = pd.concat([y_train, y_val])
 scaler_knn_cv = RobustScaler()
 X_trainval_knn = scaler_knn_cv.fit_transform(X_trainval)
 X_test_knn_cv  = scaler_knn_cv.transform(X_test)
+
 
 # %%
 cv_results_knn = knn_cv(
@@ -1157,6 +1270,7 @@ cv_results_knn = knn_cv(
 )
 
 cv_results_knn
+
 
 # %%
 best_cv_params_knn = cv_results_knn.iloc[0][
@@ -1173,6 +1287,7 @@ test_acc_knn_cv = best_knn_cv.score(X_test_knn_cv, y_test)
 
 print(f"Test accuracy CV: {test_acc_knn_cv:.4f}")
 
+
 # %%
 y_test_pred_knn_cv = best_knn_cv.predict(X_test_knn_cv)
 
@@ -1180,8 +1295,9 @@ print(f"Test accuracy CV: {best_knn_cv.score(X_test_knn_cv, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_knn_cv, digits=3))
 
 
+
 # %% [markdown]
-# ### Modelių palyginimas
+#  ### Modelių palyginimas
 
 # %%
 print("=== HOLDOUT ===")
@@ -1190,8 +1306,9 @@ print(test_acc_knn_holdout)
 print("\n=== 5-FOLD CV ===")
 print(test_acc_knn_cv)
 
+
 # %% [markdown]
-# ### ROC kreivės
+#  ### ROC kreivės
 
 # %%
 def plot_roc_curves_combined(models_dict, X_test, y_test, suptitle="ROC kreivių palyginimas"):
@@ -1268,19 +1385,25 @@ def plot_roc_curves_combined(models_dict, X_test, y_test, suptitle="ROC kreivių
 
     return auc_scores_all
 
+
 # %%
-auc_all_knn = plot_roc_curves_combined(
-    {
-        "Holdout": best_knn_holdout,
-        "CV": best_knn_cv,
-    },
+auc_knn_holdout = plot_roc_curves_combined(
+    {"Holdout": best_knn_holdout},
     X_test_knn,
     y_test,
     suptitle=""
 )
 
+auc_knn_cv = plot_roc_curves_combined(
+    {"": best_knn_cv},
+    X_test_knn_cv,
+    y_test,
+    suptitle=""
+)
+
+
 # %% [markdown]
-# ### Sumaišymo matricos
+#  ### Sumaišymo matricos
 
 # %%
 cm_test_knn_holdout = confusion_matrix(
@@ -1297,9 +1420,10 @@ disp_knn_holdout = ConfusionMatrixDisplay(
 disp_knn_holdout.plot(cmap="Blues")
 disp_knn_holdout.ax_.set_xlabel("Prognozuota klasė")
 disp_knn_holdout.ax_.set_ylabel("Tikroji klasė")
-plt.title("KNN sumaišymo matrica - holdout")
+plt.title("KNN sumaišymo matrica")
 plt.tight_layout()
 plt.show()
+
 
 # %%
 cm_test_knn_cv = confusion_matrix(
@@ -1316,17 +1440,18 @@ disp_knn_cv = ConfusionMatrixDisplay(
 disp_knn_cv.plot(cmap="Blues")
 disp_knn_cv.ax_.set_xlabel("Prognozuota klasė")
 disp_knn_cv.ax_.set_ylabel("Tikroji klasė")
-plt.title("KNN sumaišymo matrica - kryžminė validacija")
+plt.title("KNN sumaišymo matrica")
 plt.tight_layout()
 plt.show()
 
 
 
-# %% [markdown]
-# ## Dviejų dimensijų aibė
 
 # %% [markdown]
-# ### Holdout
+#  ## Dviejų dimensijų aibė
+
+# %% [markdown]
+#  ### Holdout
 
 # %%
 holdout_results_knn_pca = knn_holdout(
@@ -1338,6 +1463,7 @@ holdout_results_knn_pca = knn_holdout(
 )
 
 holdout_results_knn_pca
+
 
 # %%
 best_holdout_params_knn_pca = holdout_results_knn_pca.iloc[0][
@@ -1356,18 +1482,21 @@ test_acc_knn_holdout_pca = best_knn_holdout_pca.score(X_test_pca, y_test)
 
 print(f"Test accuracy HOLDOUT PCA: {test_acc_knn_holdout_pca:.4f}")
 
+
 # %%
 y_test_pred_knn_pca_holdout = best_knn_holdout_pca.predict(X_test_pca)
 
 print(f"Test accuracy HOLDOUT PCA: {best_knn_holdout_pca.score(X_test_pca, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_knn_pca_holdout, digits=3))
 
+
 # %% [markdown]
-# ### Kryžminė validacija
+#  ### Kryžminė validacija
 
 # %%
 X_trainval_pca = np.concatenate([X_train_pca, X_val_pca])
 y_trainval = pd.concat([y_train, y_val])
+
 
 # %%
 cv_results_knn_pca = knn_cv(
@@ -1378,6 +1507,7 @@ cv_results_knn_pca = knn_cv(
 )
 
 cv_results_knn_pca
+
 
 # %%
 best_cv_params_knn_pca = cv_results_knn_pca.iloc[0][
@@ -1396,11 +1526,13 @@ test_acc_knn_cv_pca = best_knn_cv_pca.score(X_test_pca, y_test)
 
 print(f"Test accuracy CV PCA: {test_acc_knn_cv_pca:.4f}")
 
+
 # %%
 y_test_pred_knn_pca_cv = best_knn_cv_pca.predict(X_test_pca)
 
 print(f"Test accuracy CV PCA: {best_knn_cv_pca.score(X_test_pca, y_test):.4f}\n")
 print(classification_report(y_test, y_test_pred_knn_pca_cv, digits=3))
+
 
 
 
@@ -1425,8 +1557,9 @@ plt.title("KNN sumaišymo matrica - kryžminė validacija PCA")
 plt.tight_layout()
 plt.show()
 
+
 # %% [markdown]
-# ### Klasifikavimo rezultatai PCA erdvėje
+#  ### Klasifikavimo rezultatai PCA erdvėje
 
 # %%
 def plot_classification_pca(X_test_pca, y_test, y_pred, title):
@@ -1492,6 +1625,7 @@ def plot_classification_pca(X_test_pca, y_test, y_pred, title):
     plt.tight_layout()
     plt.show()
 
+
 # %%
 plot_classification_pca(
     X_test_pca,
@@ -1499,6 +1633,7 @@ plot_classification_pca(
     y_test_pred_knn_pca_holdout,
     title="KNN klasifikavimas PCA erdvėje - holdout"
 )
+
 
 # %%
 plot_classification_pca(
@@ -1508,8 +1643,9 @@ plot_classification_pca(
     title="KNN klasifikavimas PCA erdvėje - kryžminė validacija"
 )
 
+
 # %% [markdown]
-# ### Klaidų analizė 
+#  ### Klaidų analizė
 
 # %%
 # Originalios aibės KNN CV modelio klaidos atvaizduotos PCA erdvėje
@@ -1520,3 +1656,39 @@ plot_classification_pca(
     pav="klaidu_anal_knn_cv_orig.png",
     title="KNN CV modelio klaidos PCA erdvėje"
 )
+
+
+# %%
+# %%
+mistakes_knn_cv_orig = X_test.copy()
+mistakes_knn_cv_orig.insert(0, "True", np.array(y_test))
+mistakes_knn_cv_orig.insert(1, "Predicted", y_test_pred_knn_cv)
+
+mistakes_knn_cv_orig = mistakes_knn_cv_orig[
+    mistakes_knn_cv_orig["True"] != mistakes_knn_cv_orig["Predicted"]
+]
+
+mistakes_knn_cv_orig
+
+# %%
+# %%
+time_cols = [c for c in mistakes_knn_cv_orig.columns if c not in ["True", "Predicted"]]
+
+plot_misclassified_profiles(
+    mistakes_knn_cv_orig,
+    final_dataset,
+    time_cols,
+    suptitle=""
+)
+
+# %%
+# %%
+mistakes_summary_knn_cv_orig = pd.DataFrame({
+    "Data": final_dataset.loc[mistakes_knn_cv_orig.index, "Day"].values,
+    "Tikra": mistakes_knn_cv_orig["True"].values,
+    "Prognozuota": mistakes_knn_cv_orig["Predicted"].values,
+})
+
+mistakes_summary_knn_cv_orig
+
+
